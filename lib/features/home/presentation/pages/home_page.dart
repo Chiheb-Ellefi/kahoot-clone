@@ -10,7 +10,7 @@ import '../../data/repositories/quiz_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../quiz/data/models/quiz_model.dart';
 import '../../../../core/di/injection.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -532,56 +532,101 @@ class _MakeDashboard extends StatelessWidget {
     }
   }
 
-  Future<void> _uploadPdf(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      withData: true, // required on Flutter Web to populate file.bytes
+ Future<void> _uploadPdf(BuildContext context) async {
+  final result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['pdf'],
+    withData: true,
+  );
+  if (result == null || result.files.isEmpty) return;
+
+  final file = result.files.first;
+  if (file.bytes == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not read file data.')),
     );
-    if (result != null && result.files.isNotEmpty) {
-      final file = result.files.first;
-      _showLoadingDialog(context, 'Generating quiz from PDF...');
-      try {
-        final repo = sl<QuizRepository>();
-        final quiz = await repo.generateFromPdf(file);
-        if (context.mounted) {
-          Navigator.pop(context);
-          context.push('/quizzes/${quiz.id}/edit', extra: quiz);
-        }
-      } catch (e) {
-        if (context.mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-        }
-      }
-    }
+    return;
   }
 
-  Future<void> _uploadPpt(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['ppt', 'pptx'],
-      withData: true, // required on Flutter Web to populate file.bytes
-    );
-    if (result != null && result.files.isNotEmpty) {
-      final file = result.files.first;
-      _showLoadingDialog(context, 'Generating quiz from Presentation...');
-      try {
-        final repo = sl<QuizRepository>();
-        final quiz = await repo.generateFromPptx(file);
-        if (context.mounted) {
-          Navigator.pop(context);
-          context.push('/quizzes/${quiz.id}/edit', extra: quiz);
-        }
-      } catch (e) {
-        if (context.mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-        }
-      }
+  _showLoadingDialog(context, 'Uploading PDF...');
+  try {
+    // 1. Upload to Supabase Storage
+    final supabase = Supabase.instance.client;
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+    await supabase.storage
+        .from('documents')
+        .uploadBinary(fileName, file.bytes!);
+
+    // 2. Get public download URL
+    final fileUrl = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+    // 3. Send URL to backend
+    final repo = sl<QuizRepository>();
+    final quiz = await repo.generateFromPdf(fileUrl: fileUrl, questionCount: 10);
+
+    if (context.mounted) {
+      Navigator.pop(context);
+      context.push('/quizzes/${quiz.id}/edit', extra: quiz);
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
+}
 
+Future<void> _uploadPpt(BuildContext context) async {
+  final result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['ppt', 'pptx'],
+    withData: true,
+  );
+  if (result == null || result.files.isEmpty) return;
+
+  final file = result.files.first;
+  if (file.bytes == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not read file data.')),
+    );
+    return;
+  }
+
+  _showLoadingDialog(context, 'Uploading Presentation...');
+  try {
+    // 1. Upload to Supabase Storage
+    final supabase = Supabase.instance.client;
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+    await supabase.storage
+        .from('documents')
+        .uploadBinary(fileName, file.bytes!);
+
+    // 2. Get public download URL
+    final fileUrl = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
+
+    // 3. Send URL to backend
+    final repo = sl<QuizRepository>();
+    final quiz = await repo.generateFromPptx(fileUrl: fileUrl, questionCount: 10);
+
+    if (context.mounted) {
+      Navigator.pop(context);
+      context.push('/quizzes/${quiz.id}/edit', extra: quiz);
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+}
   void _showLoadingDialog(BuildContext context, String message) {
     showDialog(
       context: context,

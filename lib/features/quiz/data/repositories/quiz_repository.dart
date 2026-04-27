@@ -91,36 +91,37 @@ class QuizRepository {
   // ─── Generate from PDF ─────────────────────────────────────────────────
   /// POST /api/quizzes/generate/pdf
   /// Uses [PlatformFile.bytes] so it works on Flutter Web (no dart:io needed).
-  Future<QuizModel> generateFromPdf(PlatformFile file) async {
-    try {
-      final bytes = file.bytes;
-      if (bytes == null) throw Exception('Could not read file bytes');
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(bytes, filename: file.name),
-      });
-      final response = await _dio.post(ApiConstants.generatePdf, data: formData);
-      return QuizModel.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw dioErrorToFailure(e);
-    }
-  }
 
+Future<QuizModel> generateFromPdf({
+  required String fileUrl,
+  int questionCount = 10,
+}) async {
+  final response = await _dio.post(
+    ApiConstants.generatePdf,
+    data: {
+      'fileUrl': fileUrl,
+      'questionCount': questionCount,
+    },
+  );
+  return QuizModel.fromJson(response.data);
+}
   // ─── Generate from Presentation (PPTX) ─────────────────────────────────
   /// POST /api/quizzes/generate/presentation
   /// Uses [PlatformFile.bytes] so it works on Flutter Web (no dart:io needed).
-  Future<QuizModel> generateFromPptx(PlatformFile file) async {
-    try {
-      final bytes = file.bytes;
-      if (bytes == null) throw Exception('Could not read file bytes');
-      final formData = FormData.fromMap({
-        'file': MultipartFile.fromBytes(bytes, filename: file.name),
-      });
-      final response = await _dio.post(ApiConstants.generatePresentation, data: formData);
-      return QuizModel.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw dioErrorToFailure(e);
-    }
-  }
+
+Future<QuizModel> generateFromPptx({
+  required String fileUrl,
+  int questionCount = 10,
+}) async {
+  final response = await _dio.post(
+    ApiConstants.generatePresentation,
+    data: {
+      'fileUrl': fileUrl,
+      'questionCount': questionCount,
+    },
+  );
+  return QuizModel.fromJson(response.data);
+}
 
   // ─── Generate from AI Text Prompt ──────────────────────────────────────
   /// POST /api/quizzes/generate/ai
