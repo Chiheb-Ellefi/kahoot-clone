@@ -128,6 +128,7 @@ class GameCubit extends Cubit<GameState> {
   Future<void> submitAnswer({
     required String questionId,
     required String answerId,
+    required int timeTaken,
   }) async {
     if (sessionId == null || playerId == null) return;
     try {
@@ -136,6 +137,7 @@ class GameCubit extends Cubit<GameState> {
         questionId: questionId,
         answerId: answerId,
         playerId: playerId!,
+        timeTaken: timeTaken,
       );
       final isCorrect = (result['isCorrect'] as bool?) ?? (result['correct'] as bool?) ?? false;
       final pointsEarned = (result['pointsEarned'] as num?)?.toInt() ?? 0;

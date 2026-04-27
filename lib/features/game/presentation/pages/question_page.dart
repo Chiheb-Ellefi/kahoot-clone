@@ -77,9 +77,11 @@ class _QuestionPageState extends State<QuestionPage>
   void _selectAnswer(BuildContext context, QuestionModel q, AnswerModel a) {
     if (_answered) return;
     setState(() => _answered = true);
+    final timeTaken = q.timeLimit - _remaining;
     context.read<GameCubit>().submitAnswer(
           questionId: q.id,
           answerId: a.id,
+          timeTaken: timeTaken,
         );
   }
 

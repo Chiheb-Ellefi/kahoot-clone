@@ -154,6 +154,7 @@ class GameRepository {
     required String questionId,
     required String answerId,
     required String playerId,
+    required int timeTaken,
   }) async {
     try {
       final response = await _dio.post(
@@ -162,6 +163,7 @@ class GameRepository {
           'questionId': questionId,
           'answerId': answerId,
           'playerId': playerId,
+          'timeTaken': timeTaken,
         },
       );
       return response.data as Map<String, dynamic>;
