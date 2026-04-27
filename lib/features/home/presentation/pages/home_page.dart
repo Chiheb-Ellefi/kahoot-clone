@@ -24,7 +24,12 @@ class HomePage extends StatelessWidget {
         body: const _HomeBody(),
         floatingActionButton: FloatingActionButton.extended(
           heroTag: 'create_quiz_fab',
-          onPressed: () => context.push('/quizzes/create'),
+          onPressed: () async {
+            final result = await context.push('/quizzes/create');
+            if (result == true && context.mounted) {
+              context.read<HomeCubit>().loadQuizzes();
+            }
+          },
           backgroundColor: const Color(0xFFE21B3C),
           icon: const Icon(Icons.add, color: Colors.white),
           label: Text(
@@ -62,7 +67,7 @@ class HomePage extends StatelessWidget {
         IconButton(
           tooltip: 'Join a game',
           icon: const Icon(Icons.gamepad_outlined, color: Colors.white),
-          onPressed: () => context.push('/game/lobby', extra: {'isHost': false}),
+          onPressed: () => context.push('/join'),
         ),
         // Profile avatar
         GestureDetector(
@@ -327,7 +332,10 @@ class _OwnerMenu extends StatelessWidget {
       icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
       onSelected: (value) async {
         if (value == 'edit') {
-          context.push('/quizzes/${quiz.id}/edit', extra: quiz);
+          final result = await context.push('/quizzes/${quiz.id}/edit');
+          if (result == true && context.mounted) {
+            context.read<HomeCubit>().loadQuizzes();
+          }
         } else if (value == 'delete') {
           final confirmed = await _confirmDelete(context);
           if (confirmed == true && context.mounted) {
@@ -441,7 +449,12 @@ class _MakeDashboard extends StatelessWidget {
                     title: 'Create content from scratch',
                     icon: Icons.add_box_rounded,
                     color: const Color(0xFFF05D22), // Orange-Red
-                    onTap: () => context.push('/quizzes/create'),
+                    onTap: () async {
+                      final result = await context.push('/quizzes/create');
+                      if (result == true && context.mounted) {
+                        context.read<HomeCubit>().loadQuizzes();
+                      }
+                    },
                   ),
                   _ActionCard(
                     title: 'Save time! Create with AI',
@@ -522,7 +535,10 @@ class _MakeDashboard extends StatelessWidget {
       final quiz = await repo.generateFromAi(prompt);
       if (context.mounted) {
         Navigator.pop(context); // hide loading
-        context.push('/quizzes/${quiz.id}/edit', extra: quiz);
+        final result = await context.push('/quizzes/${quiz.id}/edit');
+        if (result == true && context.mounted) {
+          context.read<HomeCubit>().loadQuizzes();
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -568,7 +584,10 @@ class _MakeDashboard extends StatelessWidget {
 
     if (context.mounted) {
       Navigator.pop(context);
-      context.push('/quizzes/${quiz.id}/edit', extra: quiz);
+      final reload = await context.push('/quizzes/${quiz.id}/edit');
+      if (reload == true && context.mounted) {
+        context.read<HomeCubit>().loadQuizzes();
+      }
     }
   } catch (e) {
     if (context.mounted) {
@@ -616,7 +635,10 @@ Future<void> _uploadPpt(BuildContext context) async {
 
     if (context.mounted) {
       Navigator.pop(context);
-      context.push('/quizzes/${quiz.id}/edit', extra: quiz);
+      final reload = await context.push('/quizzes/${quiz.id}/edit');
+      if (reload == true && context.mounted) {
+        context.read<HomeCubit>().loadQuizzes();
+      }
     }
   } catch (e) {
     if (context.mounted) {

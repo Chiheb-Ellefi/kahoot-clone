@@ -25,6 +25,9 @@ class DioClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       ),
     );
@@ -65,8 +68,7 @@ class _AuthInterceptor extends Interceptor {
     switch (statusCode) {
       case 400:
         final msg =
-            err.response?.data?['message'] as String? ??
-            'Invalid request.';
+            err.response?.data?['message'] as String? ?? 'Invalid request.';
         failure = ValidationFailure(msg);
         break;
       case 401:
@@ -77,8 +79,7 @@ class _AuthInterceptor extends Interceptor {
         break;
       case 409:
         final msg =
-            err.response?.data?['message'] as String? ??
-            'Conflict error.';
+            err.response?.data?['message'] as String? ?? 'Conflict error.';
         failure = ConflictFailure(msg);
         break;
       case 500:

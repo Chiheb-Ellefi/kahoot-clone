@@ -75,6 +75,11 @@ class _LobbyPageState extends State<LobbyPage> {
             '/game/question',
             extra: context.read<GameCubit>(),
           );
+        } else if (state is GameLeaderboardLoaded) {
+          context.push(
+            '/game/leaderboard',
+            extra: context.read<GameCubit>(),
+          );
         } else if (state is GameError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

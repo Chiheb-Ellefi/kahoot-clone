@@ -11,6 +11,7 @@ class QuizModel extends Equatable {
   final String? authorId;
   final String? authorName;
   final bool isPublic;
+  final int? _questionCount;
 
   const QuizModel({
     required this.id,
@@ -21,7 +22,8 @@ class QuizModel extends Equatable {
     this.authorId,
     this.authorName,
     this.isPublic = true,
-  });
+    int? questionCount,
+  }) : _questionCount = questionCount;
 
   factory QuizModel.fromJson(Map<String, dynamic> json) {
     return QuizModel(
@@ -37,6 +39,7 @@ class QuizModel extends Equatable {
       authorId: json['authorId']?.toString(),
       authorName: json['authorName'] as String?,
       isPublic: json['isPublic'] as bool? ?? true,
+      questionCount: json['questionCount'] as int? ?? json['numberOfQuestions'] as int?,
     );
   }
 
@@ -59,7 +62,7 @@ class QuizModel extends Equatable {
         'isPublic': isPublic,
       };
 
-  int get questionCount => questions.length;
+  int get questionCount => _questionCount ?? questions.length;
 
   QuizModel copyWith({
     String? id,

@@ -12,10 +12,10 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/supabase_storage.dart';
 import 'create_quiz_page.dart' show DarkField;
 
-/// Edits an existing quiz, pre-populating all fields from [quiz].
+/// Edits an existing quiz, fetching details via [quizId].
 class EditQuizPage extends StatefulWidget {
-  final QuizModel quiz;
-  const EditQuizPage({super.key, required this.quiz});
+  final String quizId;
+  const EditQuizPage({super.key, required this.quizId});
 
   @override
   State<EditQuizPage> createState() => _EditQuizPageState();
@@ -23,24 +23,33 @@ class EditQuizPage extends StatefulWidget {
 
 class _EditQuizPageState extends State<EditQuizPage> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _titleCtrl;
-  late final TextEditingController _descCtrl;
+  late TextEditingController _titleCtrl;
+  late TextEditingController _descCtrl;
   String? _coverImageUrl;
   XFile? _coverImageFile;
-  late bool _isPublic;
+  bool _isPublic = true;
   bool _isUploadingCover = false;
-  late List<_EditQuestionDraft> _questions;
+  List<_EditQuestionDraft> _questions = [];
+  QuizModel? _loadedQuiz;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _titleCtrl = TextEditingController(text: widget.quiz.title);
-    _descCtrl = TextEditingController(text: widget.quiz.description ?? '');
-    _coverImageUrl = widget.quiz.coverImageUrl;
-    _isPublic = widget.quiz.isPublic;
+    _titleCtrl = TextEditingController();
+    _descCtrl = TextEditingController();
+  }
 
-    // Pre-fill question drafts from existing quiz
-    _questions = widget.quiz.questions.map((q) {
+  void _initFromQuiz(QuizModel quiz) {
+    if (_initialized) return;
+    _initialized = true;
+    _loadedQuiz = quiz;
+    _titleCtrl.text = quiz.title;
+    _descCtrl.text = quiz.description ?? '';
+    _coverImageUrl = quiz.coverImageUrl;
+    _isPublic = quiz.isPublic;
+
+    _questions = quiz.questions.map((q) {
       return _EditQuestionDraft(
         id: q.id,
         textCtrl: TextEditingController(text: q.text),
@@ -85,6 +94,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
   }
 
   Future<void> _save(BuildContext context) async {
+    if (_loadedQuiz == null) return;
     if (!_formKey.currentState!.validate()) return;
     if (_questions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,7 +122,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
       }
     }
 
-    final updated = widget.quiz.copyWith(
+    final updated = _loadedQuiz!.copyWith(
       title: _titleCtrl.text.trim(),
       description:
           _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
@@ -135,7 +145,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<QuizCubit, QuizState>(
+    return BlocConsumer<QuizCubit, QuizState>(
       listener: (context, state) {
         if (state is QuizSaved) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +154,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
               backgroundColor: Color(0xFF26890C),
             ),
           );
-          context.go('/home');
+          context.pop(true);
         } else if (state is QuizError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -152,9 +162,20 @@ class _EditQuizPageState extends State<EditQuizPage> {
               backgroundColor: const Color(0xFFE21B3C),
             ),
           );
+        } else if (state is QuizDetailLoaded) {
+          setState(() {
+            _initFromQuiz(state.quiz);
+          });
         }
       },
-      child: Scaffold(
+      builder: (context, state) {
+        if (!_initialized && (state is QuizLoading || state is QuizInitial)) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF2D0A5E),
+            body: Center(child: CircularProgressIndicator(color: Colors.white)),
+          );
+        }
+        return Scaffold(
         backgroundColor: const Color(0xFF2D0A5E),
         appBar: AppBar(
           backgroundColor: const Color(0xFF46178F),
@@ -313,7 +334,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
 
               ..._questions.asMap().entries.map(
                     (e) => _EditQuestionCard(
-                      key: ValueKey('edit_q_${e.key}'),
+                      key: ValueKey(e.value.uiKey),
                       index: e.key,
                       draft: e.value,
                       onRemove: () =>
@@ -359,7 +380,8 @@ class _EditQuizPageState extends State<EditQuizPage> {
             ],
           ),
         ),
-      ),
+      );
+      },
     );
   }
 }
@@ -370,6 +392,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
 
 class _EditQuestionDraft {
   final String id;
+  final String uiKey;
   final TextEditingController textCtrl;
   String? imageUrl;
   XFile? imageFile;
@@ -383,7 +406,8 @@ class _EditQuestionDraft {
     this.imageFile,
     required this.timeLimit,
     required this.answers,
-  });
+    String? uiKey,
+  }) : uiKey = uiKey ?? UniqueKey().toString();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -417,6 +441,16 @@ class _EditQuestionCardState extends State<_EditQuestionCard> {
     _answerCtrls = widget.draft.answers
         .map((a) => TextEditingController(text: a.text))
         .toList();
+  }
+
+  @override
+  void didUpdateWidget(_EditQuestionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.draft.uiKey != widget.draft.uiKey) {
+      for (int i = 0; i < _answerCtrls.length; i++) {
+        _answerCtrls[i].text = widget.draft.answers[i].text;
+      }
+    }
   }
 
   @override

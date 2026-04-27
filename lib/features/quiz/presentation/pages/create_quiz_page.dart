@@ -134,7 +134,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               backgroundColor: Color(0xFF26890C),
             ),
           );
-          context.go('/home');
+          context.pop(true);
         } else if (state is QuizError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

@@ -1,16 +1,23 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../data/repositories/game_repository.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../data/models/leaderboard_model.dart';
+import '../../../quiz/data/models/question_model.dart';
 import 'game_state.dart';
 
 /// Cubit that orchestrates the entire game session lifecycle.
 class GameCubit extends Cubit<GameState> {
   final GameRepository _repo;
-  Timer? _pollingTimer;
+  WebSocketChannel? _wsChannel;
 
   /// The current session ID (persisted across state transitions).
   String? sessionId;
+
+  /// Tracks the current question index to detect transitions
+  int? _currentQuestionIndex;
 
   /// The current player ID (set after joining).
   String? playerId;
@@ -28,8 +35,7 @@ class GameCubit extends Cubit<GameState> {
       sessionId = result.sessionId;
       isHost = true;
       emit(GameCreated(sessionId: result.sessionId, gamePin: result.gamePin));
-      // Start polling the lobby to refresh the player list
-      _startPolling();
+      _connectWebSocket();
     } catch (e) {
       emit(GameError(e.toString()));
     }
@@ -44,8 +50,7 @@ class GameCubit extends Cubit<GameState> {
       playerId = result.playerId;
       isHost = false;
       emit(GameJoined(sessionId: result.sessionId, playerId: result.playerId));
-      // Player also polls to detect when the game starts
-      _startPolling();
+      _connectWebSocket();
     } catch (e) {
       emit(GameError(e.toString()));
     }
@@ -68,7 +73,7 @@ class GameCubit extends Cubit<GameState> {
       playerId = result.playerId;
       isHost = false;
       emit(GameJoined(sessionId: result.sessionId, playerId: result.playerId));
-      _startPolling();
+      _connectWebSocket();
     } catch (e) {
       emit(GameError(e.toString()));
     }
@@ -80,15 +85,18 @@ class GameCubit extends Cubit<GameState> {
     try {
       final session = await _repo.getSession(sessionId!);
       if (session.isActive) {
-        _stopPolling();
-        await loadCurrentQuestion();
+        if (_currentQuestionIndex != session.currentQuestionIndex) {
+          _currentQuestionIndex = session.currentQuestionIndex;
+          await loadCurrentQuestion();
+        }
       } else if (session.isFinished) {
-        _stopPolling();
+        _disconnectWebSocket();
         await loadResults();
       } else {
         emit(GameSessionUpdated(session));
       }
-    } catch (_) {
+    } catch (e) {
+      print('Refresh Session Error: $e');
       // Silently ignore polling errors to avoid flickering
     }
   }
@@ -96,10 +104,9 @@ class GameCubit extends Cubit<GameState> {
   // ─── Host: Start game ──────────────────────────────────────────────────
   Future<void> startGame() async {
     if (sessionId == null) return;
+    emit(const GameLoading());
     try {
-      await _repo.startGame(sessionId!);
-      _stopPolling();
-      await loadCurrentQuestion();
+      _sendWsMessage({'action': 'START_GAME'});
     } catch (e) {
       emit(GameError(e.toString()));
     }
@@ -130,7 +137,7 @@ class GameCubit extends Cubit<GameState> {
         answerId: answerId,
         playerId: playerId!,
       );
-      final isCorrect = result['isCorrect'] as bool? ?? false;
+      final isCorrect = (result['isCorrect'] as bool?) ?? (result['correct'] as bool?) ?? false;
       final pointsEarned = (result['pointsEarned'] as num?)?.toInt() ?? 0;
       emit(GameAnswerResult(isCorrect: isCorrect, pointsEarned: pointsEarned));
     } catch (e) {
@@ -150,15 +157,20 @@ class GameCubit extends Cubit<GameState> {
     }
   }
 
+  void requestShowLeaderboard() {
+    if (isHost) {
+      _sendWsMessage({'action': 'SHOW_LEADERBOARD'});
+    }
+  }
+
   // ─── Host: Advance to next question ───────────────────────────────────
   Future<void> goToNextQuestion() async {
     if (sessionId == null) return;
+    emit(const GameLoading());
     try {
-      await _repo.nextQuestion(sessionId!);
-      await loadCurrentQuestion();
+      _sendWsMessage({'action': 'NEXT_QUESTION'});
     } catch (e) {
-      // If no more questions, load the final results
-      await loadResults();
+      emit(GameError(e.toString()));
     }
   }
 
@@ -176,30 +188,99 @@ class GameCubit extends Cubit<GameState> {
 
   // ─── Reset game state ──────────────────────────────────────────────────
   void reset() {
-    _stopPolling();
+    _disconnectWebSocket();
     sessionId = null;
     playerId = null;
+    _currentQuestionIndex = null;
     isHost = false;
     emit(const GameInitial());
   }
 
-  // ─── Internal polling ──────────────────────────────────────────────────
-  void _startPolling() {
-    _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(
-      const Duration(milliseconds: AppConstants.pollIntervalMs),
-      (_) => refreshSession(),
-    );
+  // ─── WebSocket Logic ──────────────────────────────────────────────────
+  void _connectWebSocket() {
+    _disconnectWebSocket();
+    if (sessionId == null) return;
+    
+    final wsBase = ApiConstants.baseUrl.replaceFirst('http', 'ws');
+    final url = '$wsBase/api/games/ws/$sessionId';
+    final uriStr = playerId != null ? '$url?playerId=$playerId' : '$url?host=true';
+    
+    try {
+      _wsChannel = WebSocketChannel.connect(Uri.parse(uriStr));
+      _wsChannel!.stream.listen(
+        (message) {
+          if (message is String) {
+            try {
+              final data = jsonDecode(message);
+              _handleWsMessage(data);
+            } catch (e) {
+              print('WS Decode Error: $e');
+            }
+          }
+        },
+        onError: (e) => print('WS Error: $e'),
+        onDone: () => print('WS Closed'),
+      );
+    } catch (e) {
+      print('WebSocket connection failed: $e');
+    }
   }
 
-  void _stopPolling() {
-    _pollingTimer?.cancel();
-    _pollingTimer = null;
+  void _disconnectWebSocket() {
+    _wsChannel?.sink.close();
+    _wsChannel = null;
+  }
+
+  void _sendWsMessage(Map<String, dynamic> data) {
+    if (_wsChannel != null) {
+      _wsChannel!.sink.add(jsonEncode(data));
+    }
+  }
+
+  Future<void> _handleWsMessage(Map<String, dynamic> data) async {
+    final type = data['type'] ?? data['action'];
+    print('Received WS Message: $data');
+    switch (type) {
+      case 'SESSION_UPDATED':
+      case 'PLAYER_JOINED':
+        await refreshSession();
+        break;
+      case 'GAME_STARTED':
+        await loadCurrentQuestion();
+        break;
+      case 'QUESTION_ACTIVE':
+        if (data['question'] != null) {
+          emit(GameQuestionActive(
+            question: QuestionModel.fromJson(data['question']),
+            sessionId: sessionId!,
+          ));
+        } else {
+          await loadCurrentQuestion();
+        }
+        break;
+      case 'SHOW_LEADERBOARD':
+        await loadLeaderboard();
+        break;
+      case 'LEADERBOARD_UPDATED':
+        if (data['leaderboard'] != null) {
+          emit(GameLeaderboardLoaded(LeaderboardModel.fromJson(data['leaderboard'])));
+        } else {
+          await loadLeaderboard();
+        }
+        break;
+      case 'GAME_FINISHED':
+        _disconnectWebSocket();
+        await loadResults();
+        break;
+      default:
+        // fallback
+        await refreshSession();
+    }
   }
 
   @override
   Future<void> close() {
-    _stopPolling();
+    _disconnectWebSocket();
     return super.close();
   }
 }

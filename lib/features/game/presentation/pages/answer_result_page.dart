@@ -33,20 +33,10 @@ class _AnswerResultPageState extends State<AnswerResultPage>
     _scaleAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.elasticOut);
     _fadeAnim = CurvedAnimation(parent: _scaleCtrl, curve: Curves.easeIn);
     _scaleCtrl.forward();
-
-    // Auto-advance after delay
-    _timer = Timer(
-      const Duration(milliseconds: AppConstants.answerResultDelayMs),
-      () {
-        if (!mounted) return;
-        context.read<GameCubit>().loadLeaderboard();
-      },
-    );
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _scaleCtrl.dispose();
     super.dispose();
   }
@@ -56,8 +46,9 @@ class _AnswerResultPageState extends State<AnswerResultPage>
     return BlocConsumer<GameCubit, GameState>(
       listener: (context, state) {
         if (state is GameLeaderboardLoaded || state is GameFinished) {
-          _timer?.cancel();
-          context.push('/game/leaderboard', extra: context.read<GameCubit>());
+          context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
+        } else if (state is GameQuestionActive) {
+          context.pushReplacement('/game/question', extra: context.read<GameCubit>());
         } else if (state is GameError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -134,18 +125,15 @@ class _AnswerResultPageState extends State<AnswerResultPage>
 
                     const SizedBox(height: 48),
 
-                    // ── Progress indicator ───────────────────────────
-                    _CountdownBar(
-                      duration: const Duration(
-                        milliseconds: AppConstants.answerResultDelayMs,
-                      ),
-                    ),
+                    // ── Waiting indicator ───────────────────────────
+                    const CircularProgressIndicator(color: Colors.white),
                     const SizedBox(height: 16),
                     Text(
-                      'Loading leaderboard…',
+                      'Waiting for others...',
                       style: GoogleFonts.nunito(
                         color: Colors.white70,
-                        fontSize: 14,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -159,46 +147,3 @@ class _AnswerResultPageState extends State<AnswerResultPage>
   }
 }
 
-/// A thin white progress bar that drains over [duration].
-class _CountdownBar extends StatefulWidget {
-  final Duration duration;
-  const _CountdownBar({required this.duration});
-
-  @override
-  State<_CountdownBar> createState() => _CountdownBarState();
-}
-
-class _CountdownBarState extends State<_CountdownBar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: widget.duration)
-      ..forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (_, __) => LinearProgressIndicator(
-          value: 1.0 - _ctrl.value,
-          backgroundColor: Colors.white24,
-          valueColor: const AlwaysStoppedAnimation(Colors.white),
-          minHeight: 6,
-          borderRadius: BorderRadius.circular(3),
-        ),
-      ),
-    );
-  }
-}

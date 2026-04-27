@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/di/injection.dart';
 import 'app.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 // ─── Supabase credentials ──────────────────────────────────────────────────
 // Replace with your actual Supabase project URL and anon key.
@@ -19,6 +20,9 @@ Future<void> main() async {
 
   // Register all dependencies
   await setupDependencies();
+
+  // Use path URL strategy for web (removes the # from URL)
+  usePathUrlStrategy();
 
   runApp(QuizBlitzApp());
 }

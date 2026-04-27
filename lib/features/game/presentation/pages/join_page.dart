@@ -7,6 +7,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../../../features/auth/presentation/cubit/auth_state.dart';
 
 class JoinPage extends StatefulWidget {
   const JoinPage({super.key});
@@ -73,31 +75,64 @@ class _JoinPageState extends State<JoinPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2D0A5E),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: () => context.push('/login'),
-            child: Text(
-              'Host / Login',
-              style: GoogleFonts.nunito(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+    final isAvatarPage = _pageController.hasClients && _pageController.page?.round() == 1;
+    return PopScope(
+      canPop: !isAvatarPage,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        if (isAvatarPage) {
+          _pageController.previousPage(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF2D0A5E),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              if (_pageController.hasClients && _pageController.page?.round() == 1) {
+                _pageController.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              } else {
+                context.pop();
+              }
+            },
           ),
-        ],
-      ),
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _buildScreen(child: _buildPinInput()),
-          _buildScreen(child: _buildNicknameInput()),
-        ],
+          actions: [
+            BlocBuilder<AuthCubit, AuthState>(
+              builder: (context, state) {
+                if (state is AuthAuthenticated) {
+                  return const SizedBox.shrink();
+                }
+                return TextButton(
+                  onPressed: () => context.push('/login'),
+                  child: Text(
+                    'Host / Login',
+                    style: GoogleFonts.nunito(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _buildScreen(child: _buildPinInput()),
+            _buildScreen(child: _buildNicknameInput()),
+          ],
+        ),
       ),
     );
   }

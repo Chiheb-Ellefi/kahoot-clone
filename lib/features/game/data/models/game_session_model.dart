@@ -21,10 +21,10 @@ class GameSessionModel extends Equatable {
 
   factory GameSessionModel.fromJson(Map<String, dynamic> json) {
     return GameSessionModel(
-      sessionId: json['sessionId']?.toString() ?? '',
+      sessionId: json['sessionId']?.toString() ?? json['id']?.toString() ?? '',
       gamePin: json['gamePin']?.toString() ?? '',
       quizId: json['quizId']?.toString() ?? '',
-      status: json['status'] as String? ?? 'WAITING',
+      status: (json['status'] as String?)?.toUpperCase() ?? 'WAITING',
       players:
           (json['players'] as List<dynamic>?)
               ?.map((p) => PlayerModel.fromJson(p as Map<String, dynamic>))
@@ -35,9 +35,9 @@ class GameSessionModel extends Equatable {
     );
   }
 
-  bool get isWaiting => status == 'WAITING';
-  bool get isActive => status == 'ACTIVE';
-  bool get isFinished => status == 'FINISHED';
+  bool get isWaiting => status == 'WAITING' || status == 'PENDING';
+  bool get isActive => status == 'ACTIVE' || status == 'IN_PROGRESS' || status == 'STARTED';
+  bool get isFinished => status == 'FINISHED' || status == 'COMPLETED';
 
   @override
   List<Object?> get props => [

@@ -26,6 +26,7 @@ class _QuestionPageState extends State<QuestionPage>
   int _remaining = 30;
   bool _answered = false;
   QuestionModel? _currentQuestion;
+  DateTime? _endTime;
 
   // Countdown animation controller
   late AnimationController _countdownCtrl;
@@ -46,17 +47,28 @@ class _QuestionPageState extends State<QuestionPage>
   void _startTimer(int seconds) {
     _timer?.cancel();
     _remaining = seconds;
-    _countdownCtrl.duration = Duration(seconds: seconds);
-    _countdownCtrl.forward(from: 0);
+    _endTime = DateTime.now().add(Duration(seconds: seconds));
+    
+    _countdownCtrl?.duration = Duration(seconds: seconds);
+    _countdownCtrl?.forward(from: 0);
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
-      setState(() => _remaining--);
+      if (_endTime == null) return;
+
+      final now = DateTime.now();
+      final diff = _endTime!.difference(now).inSeconds;
+      
+      if (diff != _remaining) {
+        setState(() => _remaining = diff >= 0 ? diff : 0);
+      }
+
       if (_remaining <= 0) {
         _timer?.cancel();
         // Time's up — show leaderboard
-        if (!_answered) {
-          context.read<GameCubit>().loadLeaderboard();
+        final cubit = context.read<GameCubit>();
+        if (cubit.isHost) {
+          cubit.requestShowLeaderboard();
         }
       }
     });
@@ -65,7 +77,6 @@ class _QuestionPageState extends State<QuestionPage>
   void _selectAnswer(BuildContext context, QuestionModel q, AnswerModel a) {
     if (_answered) return;
     setState(() => _answered = true);
-    _timer?.cancel();
     context.read<GameCubit>().submitAnswer(
           questionId: q.id,
           answerId: a.id,
@@ -83,12 +94,11 @@ class _QuestionPageState extends State<QuestionPage>
           });
           _startTimer(state.question.timeLimit);
         } else if (state is GameAnswerResult) {
-          _timer?.cancel();
           context.push('/game/answer-result', extra: context.read<GameCubit>());
         } else if (state is GameLeaderboardLoaded) {
-          context.push('/game/leaderboard', extra: context.read<GameCubit>());
+          context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
         } else if (state is GameFinished) {
-          context.push('/game/leaderboard', extra: context.read<GameCubit>());
+          context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
         } else if (state is GameError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -101,6 +111,18 @@ class _QuestionPageState extends State<QuestionPage>
       builder: (context, state) {
         final q = _currentQuestion ??
             (state is GameQuestionActive ? state.question : null);
+
+        // Start timer initially if we missed the transition
+        if (q != null && _timer == null && !_answered) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _timer == null) {
+              setState(() {
+                _currentQuestion = q;
+              });
+              _startTimer(q.timeLimit);
+            }
+          });
+        }
 
         if (q == null) {
           return const Scaffold(

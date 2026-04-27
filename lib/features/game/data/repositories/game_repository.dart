@@ -36,7 +36,8 @@ class GameRepository {
       );
       final data = response.data as Map<String, dynamic>;
       return CreateGameResult(
-        sessionId: data['sessionId']?.toString() ?? '',
+        sessionId:
+            data['sessionId']?.toString() ?? data['id']?.toString() ?? '',
         gamePin: data['gamePin']?.toString() ?? '',
       );
     } on DioException catch (e) {
@@ -56,10 +57,18 @@ class GameRepository {
         data: {'pin': pin, 'nickname': nickname},
       );
       final data = response.data as Map<String, dynamic>;
-      return JoinGameResult(
-        sessionId: data['sessionId']?.toString() ?? '',
-        playerId: data['playerId']?.toString() ?? '',
-      );
+      String sId =
+          data['sessionId']?.toString() ?? data['id']?.toString() ?? '';
+      if (sId.isEmpty && data['session'] != null) {
+        sId = data['session']['id']?.toString() ?? '';
+      } else if (sId.isEmpty && data['gameSession'] != null) {
+        sId = data['gameSession']['id']?.toString() ?? '';
+      }
+      String pId = data['playerId']?.toString() ?? '';
+      if (pId.isEmpty && data['player'] != null) {
+        pId = data['player']['id']?.toString() ?? '';
+      }
+      return JoinGameResult(sessionId: sId, playerId: pId);
     } on DioException catch (e) {
       throw dioErrorToFailure(e);
     }
@@ -82,10 +91,18 @@ class GameRepository {
         },
       );
       final data = response.data as Map<String, dynamic>;
-      return JoinGameResult(
-        sessionId: data['sessionId']?.toString() ?? '',
-        playerId: data['playerId']?.toString() ?? '',
-      );
+      String sId =
+          data['sessionId']?.toString() ?? data['id']?.toString() ?? '';
+      if (sId.isEmpty && data['session'] != null) {
+        sId = data['session']['id']?.toString() ?? '';
+      } else if (sId.isEmpty && data['gameSession'] != null) {
+        sId = data['gameSession']['id']?.toString() ?? '';
+      }
+      String pId = data['playerId']?.toString() ?? '';
+      if (pId.isEmpty && data['player'] != null) {
+        pId = data['player']['id']?.toString() ?? '';
+      }
+      return JoinGameResult(sessionId: sId, playerId: pId);
     } on DioException catch (e) {
       throw dioErrorToFailure(e);
     }
@@ -95,7 +112,10 @@ class GameRepository {
   /// GET /api/games/{sessionId}
   Future<GameSessionModel> getSession(String sessionId) async {
     try {
-      final response = await _dio.get(ApiConstants.gameSession(sessionId));
+      final response = await _dio.get(
+        ApiConstants.gameSession(sessionId),
+        queryParameters: {'_t': DateTime.now().millisecondsSinceEpoch},
+      );
       return GameSessionModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw dioErrorToFailure(e);
@@ -118,6 +138,7 @@ class GameRepository {
     try {
       final response = await _dio.get(
         ApiConstants.currentQuestion(sessionId),
+        queryParameters: {'_t': DateTime.now().millisecondsSinceEpoch},
       );
       return QuestionModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -163,7 +184,10 @@ class GameRepository {
   /// GET /api/games/{sessionId}/leaderboard
   Future<LeaderboardModel> getLeaderboard(String sessionId) async {
     try {
-      final response = await _dio.get(ApiConstants.leaderboard(sessionId));
+      final response = await _dio.get(
+        ApiConstants.leaderboard(sessionId),
+        queryParameters: {'_t': DateTime.now().millisecondsSinceEpoch},
+      );
       return LeaderboardModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw dioErrorToFailure(e);
@@ -174,7 +198,10 @@ class GameRepository {
   /// GET /api/games/{sessionId}/results
   Future<LeaderboardModel> getResults(String sessionId) async {
     try {
-      final response = await _dio.get(ApiConstants.results(sessionId));
+      final response = await _dio.get(
+        ApiConstants.results(sessionId),
+        queryParameters: {'_t': DateTime.now().millisecondsSinceEpoch},
+      );
       return LeaderboardModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw dioErrorToFailure(e);

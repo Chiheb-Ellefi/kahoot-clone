@@ -31,7 +31,7 @@ class AnswerModel extends Equatable {
   Map<String, dynamic> toJson() => {
         'id': id,
         'text': text,
-        'isCorrect': isCorrect,
+        'correct': isCorrect,
         'color': color,
       };
 

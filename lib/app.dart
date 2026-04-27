@@ -39,6 +39,10 @@ class QuizBlitzApp extends StatelessWidget {
     refreshListenable: _GoRouterAuthNotifier(_authCubit),
     redirect: (context, state) {
       final authState = _authCubit.state;
+      
+      // Do not force redirects while we're still checking if there is a token.
+      if (authState is AuthInitial || authState is AuthLoading) return null;
+
       final isLoggedIn = authState is AuthAuthenticated;
       
       final isAuthRoute = state.matchedLocation == '/login' ||
@@ -101,10 +105,10 @@ class QuizBlitzApp extends StatelessWidget {
       GoRoute(
         path: '/quizzes/:id/edit',
         builder: (_, state) {
-          final quiz = state.extra as QuizModel;
+          final quizId = state.pathParameters['id']!;
           return BlocProvider(
-            create: (_) => sl<QuizCubit>(),
-            child: EditQuizPage(quiz: quiz),
+            create: (_) => sl<QuizCubit>()..loadQuizDetail(quizId),
+            child: EditQuizPage(quizId: quizId),
           );
         },
       ),
@@ -128,6 +132,7 @@ class QuizBlitzApp extends StatelessWidget {
       ),
       GoRoute(
         path: '/game/question',
+        redirect: (context, state) => state.extra == null ? '/home' : null,
         builder: (_, state) {
           final gameCubit = state.extra as GameCubit;
           return BlocProvider.value(
@@ -138,6 +143,7 @@ class QuizBlitzApp extends StatelessWidget {
       ),
       GoRoute(
         path: '/game/answer-result',
+        redirect: (context, state) => state.extra == null ? '/home' : null,
         builder: (_, state) {
           final gameCubit = state.extra as GameCubit;
           return BlocProvider.value(
@@ -148,6 +154,7 @@ class QuizBlitzApp extends StatelessWidget {
       ),
       GoRoute(
         path: '/game/leaderboard',
+        redirect: (context, state) => state.extra == null ? '/home' : null,
         builder: (_, state) {
           final gameCubit = state.extra as GameCubit;
           return BlocProvider.value(

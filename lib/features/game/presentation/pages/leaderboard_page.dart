@@ -46,7 +46,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     return BlocConsumer<GameCubit, GameState>(
       listener: (context, state) {
         if (state is GameQuestionActive) {
-          context.push('/game/question', extra: context.read<GameCubit>());
+          context.pushReplacement('/game/question', extra: context.read<GameCubit>());
         } else if (state is GameError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -117,55 +117,60 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 )
               : SlideTransition(
                   position: _slideAnim,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
+                  child: CustomScrollView(
+                    slivers: [
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                       // ── Podium top 3 ─────────────────────────────────
                       if (lb.topThree.isNotEmpty)
-                        _Podium(top3: lb.topThree),
+                        SliverToBoxAdapter(child: _Podium(top3: lb.topThree)),
 
-                      const SizedBox(height: 16),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                       // ── Full ranked list ─────────────────────────────
-                      Expanded(
-                        child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (_, i) {
+                              if (i.isOdd) return const SizedBox(height: 8);
+                              final index = i ~/ 2;
+                              return _RankRow(player: lb!.players[index], index: index);
+                            },
+                            childCount: lb.players.length * 2 - 1,
                           ),
-                          itemCount: lb.players.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (_, i) =>
-                              _RankRow(player: lb!.players[i], index: i),
                         ),
                       ),
 
                       // ── Next question / host controls ─────────────────
                       if (!isFinal && isHost)
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: ElevatedButton.icon(
-                              onPressed: () =>
-                                  gameCubit.goToNextQuestion(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF46178F),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: ElevatedButton.icon(
+                                onPressed: () =>
+                                    gameCubit.goToNextQuestion(),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF46178F),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
                                 ),
-                              ),
-                              icon: const Icon(Icons.navigate_next,
-                                  color: Colors.white),
-                              label: Text(
-                                'Next Question',
-                                style: GoogleFonts.nunito(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 17,
+                                icon: const Icon(Icons.navigate_next,
+                                    color: Colors.white),
+                                label: Text(
+                                  'Next Question',
+                                  style: GoogleFonts.nunito(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 17,
+                                  ),
                                 ),
                               ),
                             ),
@@ -237,7 +242,7 @@ class _PodiumState extends State<_Podium> with SingleTickerProviderStateMixin {
     if (widget.top3.length >= 3) displayOrder.add(2);
 
     return SizedBox(
-      height: 160,
+      height: 180,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
