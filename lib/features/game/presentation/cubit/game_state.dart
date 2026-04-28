@@ -61,6 +61,14 @@ class GameAnswerResult extends GameState {
   @override
   List<Object?> get props => [isCorrect, pointsEarned];
 }
+class GameRoundComplete extends GameState {
+  const GameRoundComplete();
+}
+class GameShowLeaderboard extends GameState {
+  final LeaderboardModel leaderboard;
+  const GameShowLeaderboard(this.leaderboard);
+  @override List<Object?> get props => [leaderboard];
+}
 
 /// Leaderboard data is available (between questions or final).
 class GameLeaderboardLoaded extends GameState {
