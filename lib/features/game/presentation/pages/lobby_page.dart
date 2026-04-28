@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
+import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/responsive_container.dart';
 
 /// Handles both the Host lobby (show PIN + player list) and the
 /// Player lobby (enter PIN + nickname and join).
@@ -81,15 +84,19 @@ class _LobbyPageState extends State<LobbyPage> {
             extra: context.read<GameCubit>(),
           );
         } else if (state is GameError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: const Color(0xFFE21B3C),
-            ),
-          );
-          if (!widget.isHost) {
-            context.go('/join');
+          String msg = state.message;
+          if (msg.toLowerCase().contains('not found') || msg.toLowerCase().contains('invalid pin')) {
+            msg = 'No game found with this PIN.';
           }
+          DialogUtils.showError(
+            context, 
+            msg, 
+            onClose: () {
+              if (!widget.isHost) {
+                context.go('/join');
+              }
+            }
+          );
         }
       },
       builder: (context, state) {
@@ -129,7 +136,7 @@ class _HostLobby extends StatelessWidget {
         state is GameLoading || state is GameInitial;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF46178F),
+      backgroundColor: AppColors.primary600,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -152,7 +159,9 @@ class _HostLobby extends StatelessWidget {
           ? const Center(
               child: CircularProgressIndicator(color: Colors.white),
             )
-          : Column(
+          : ResponsiveContainer(
+              maxWidth: 600,
+              child: Column(
               children: [
                 const SizedBox(height: 24),
 
@@ -266,7 +275,7 @@ class _HostLobby extends StatelessWidget {
                           ? null
                           : () => context.read<GameCubit>().startGame(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF26890C),
+                        backgroundColor: AppColors.success400,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -284,6 +293,7 @@ class _HostLobby extends StatelessWidget {
                 ),
               ],
             ),
+          ),
     );
   }
 }
@@ -305,7 +315,7 @@ class _PlayerLobby extends StatelessWidget {
     final isLoading = state is GameLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF46178F),
+      backgroundColor: AppColors.primary600,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -321,9 +331,12 @@ class _PlayerLobby extends StatelessWidget {
           ),
         ),
       ),
-      body: hasJoined
-          ? _WaitingForHost()
-          : const Center(child: CircularProgressIndicator(color: Colors.white)),
+      body: ResponsiveContainer(
+        maxWidth: 600,
+        child: hasJoined
+            ? _WaitingForHost()
+            : const Center(child: CircularProgressIndicator(color: Colors.white)),
+      ),
     );
   }
 }

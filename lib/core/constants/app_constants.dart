@@ -3,7 +3,7 @@ class AppConstants {
   AppConstants._();
 
   // App name
-  static const String appName = 'Kaboot';
+  static const String appName = 'Quizzo';
 
   // Shared Preferences keys
   static const String tokenKey = 'jwt_token';
@@ -26,11 +26,11 @@ class AppConstants {
   // Answer-result auto-advance delay (ms)
   static const int answerResultDelayMs = 2000;
 
-  // Kahoot answer colors
+  // Quizzo answer colors
   static const List<String> answerColors = [
-    '#E21B3C', // red
-    '#1368CE', // blue
-    '#26890C', // green
-    '#FFA602', // yellow
+    '#5DCAA5', // Success (Turbo Teal)
+    '#534AB7', // Primary (Electric Violet)
+    '#F0997B', // Error (Fiesta Coral)
+    '#FAC775', // Accent (Zest Amber)
   ];
 }

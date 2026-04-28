@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'core/constants/app_colors.dart';
+import 'core/constants/app_constants.dart';
 import 'core/di/injection.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/cubit/auth_state.dart';
@@ -24,12 +26,8 @@ import 'features/profile/presentation/cubit/profile_cubit.dart';
 import 'features/profile/presentation/pages/profile_page.dart';
 import 'features/game/presentation/pages/join_page.dart';
 
-/// Kahoot brand colours.
-const _kPrimary = Color(0xFF46178F);
-const _kBackground = Color(0xFF2D0A5E);
-
-class QuizBlitzApp extends StatelessWidget {
-  QuizBlitzApp({super.key});
+class QuizzoApp extends StatelessWidget {
+  QuizzoApp({super.key});
 
   // ─── Auth cubit kept at app level so the redirect guard can react ──────
   final _authCubit = sl<AuthCubit>();
@@ -180,7 +178,7 @@ class QuizBlitzApp extends StatelessWidget {
     return BlocProvider.value(
       value: _authCubit..checkAuthStatus(),
       child: MaterialApp.router(
-        title: 'QuizBlitz',
+        title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: _buildTheme(),
         routerConfig: _router,
@@ -192,18 +190,19 @@ class QuizBlitzApp extends StatelessWidget {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: _kPrimary,
+        seedColor: AppColors.primary600,
         brightness: Brightness.dark,
-        primary: _kPrimary,
-        surface: _kBackground,
+        primary: AppColors.primary600,
+        surface: AppColors.primary800,
+        error: AppColors.error400,
       ),
-      scaffoldBackgroundColor: _kBackground,
+      scaffoldBackgroundColor: AppColors.primary800,
       textTheme: GoogleFonts.nunitoTextTheme(
         ThemeData.dark().textTheme,
       ).apply(bodyColor: Colors.white, displayColor: Colors.white),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF864CBF),
+          backgroundColor: AppColors.primary400,
           foregroundColor: Colors.white,
           textStyle: GoogleFonts.nunito(
             fontSize: 16,

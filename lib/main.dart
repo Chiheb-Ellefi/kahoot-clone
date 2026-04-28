@@ -24,5 +24,5 @@ Future<void> main() async {
   // Use path URL strategy for web (removes the # from URL)
   usePathUrlStrategy();
 
-  runApp(QuizBlitzApp());
+  runApp(QuizzoApp());
 }

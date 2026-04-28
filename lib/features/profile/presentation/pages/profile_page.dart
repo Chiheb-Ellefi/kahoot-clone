@@ -7,8 +7,10 @@ import 'package:image_picker/image_picker.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/profile_state.dart';
 import '../../../../core/utils/supabase_storage.dart';
-import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/data/models/user_model.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../../core/widgets/responsive_container.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -80,23 +82,23 @@ class _ProfilePageState extends State<ProfilePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile updated ✅'),
-              backgroundColor: Color(0xFF26890C),
+              backgroundColor: AppColors.success400,
             ),
           );
         } else if (state is ProfileError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: const Color(0xFFE21B3C),
+              backgroundColor: AppColors.error400,
             ),
           );
         }
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: const Color(0xFF2D0A5E),
+          backgroundColor: AppColors.primary800,
           appBar: AppBar(
-            backgroundColor: const Color(0xFF46178F),
+            backgroundColor: AppColors.primary600,
             iconTheme: const IconThemeData(color: Colors.white),
             title: Text(
               'Profile',
@@ -121,11 +123,13 @@ class _ProfilePageState extends State<ProfilePage> {
               ? const Center(
                   child: CircularProgressIndicator(color: Colors.white),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
+              : ResponsiveContainer(
+                  maxWidth: 600,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
 
                       // ── Avatar ──────────────────────────────────────
                       GestureDetector(
@@ -135,34 +139,16 @@ class _ProfilePageState extends State<ProfilePage> {
                           children: [
                             CircleAvatar(
                               radius: 60,
-                              backgroundColor:
-                                  const Color(0xFF46178F),
+                              backgroundColor: AppColors.primary600,
                               backgroundImage: _avatarFile != null
-                                  ? NetworkImage(_avatarFile!.path)
-                                      as ImageProvider
-                                  : (_avatarUrl != null
-                                      ? CachedNetworkImageProvider(
-                                          _avatarUrl!)
-                                      : null),
-                              child: (_avatarFile == null &&
-                                      _avatarUrl == null)
-                                  ? Text(
-                                      _usernameCtrl.text.isNotEmpty
-                                          ? _usernameCtrl.text[0]
-                                              .toUpperCase()
-                                          : '?',
-                                      style: GoogleFonts.nunito(
-                                        fontSize: 42,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : null,
+                                  ? NetworkImage(_avatarFile!.path) as ImageProvider
+                                  : CachedNetworkImageProvider(
+                                      _avatarUrl ?? 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix'),
                             ),
                             if (_isEditing)
                               CircleAvatar(
                                 radius: 18,
-                                backgroundColor: const Color(0xFFE21B3C),
+                                backgroundColor: AppColors.error400,
                                 child: _isUploadingAvatar
                                     ? const SizedBox(
                                         height: 14,
@@ -216,8 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ? null
                                         : () => _saveProfile(context),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      const Color(0xFF26890C),
+                                  backgroundColor: AppColors.success400,
                                   shape: RoundedRectangleBorder(
                                     borderRadius:
                                         BorderRadius.circular(14),
@@ -248,8 +233,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 onPressed: () =>
                                     setState(() => _isEditing = true),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      const Color(0xFF46178F),
+                                  backgroundColor: AppColors.primary600,
                                   shape: RoundedRectangleBorder(
                                     borderRadius:
                                         BorderRadius.circular(14),
@@ -366,6 +350,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
+              ),
         );
       },
     );

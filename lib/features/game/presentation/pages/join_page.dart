@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
 import '../../../../core/di/injection.dart';
@@ -44,10 +45,21 @@ class _JoinPageState extends State<JoinPage> {
 
   void _onEnterPin() {
     if (_pinCtrl.text.trim().length >= 4) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      final authState = context.read<AuthCubit>().state;
+      if (authState is AuthAuthenticated) {
+        final user = authState.user;
+        context.push('/game/lobby', extra: {
+          'pin': _pinCtrl.text.trim(),
+          'nickname': user.username.isNotEmpty ? user.username : 'Player',
+          'avatarUrl': user.avatarUrl ?? _selectedAvatar,
+          'isHost': false,
+        });
+      } else {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid PIN')),
@@ -88,7 +100,7 @@ class _JoinPageState extends State<JoinPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF2D0A5E),
+        backgroundColor: AppColors.primary800,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -255,7 +267,7 @@ class _JoinPageState extends State<JoinPage> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? const Color(0xFF46178F) : Colors.transparent,
+                      color: isSelected ? AppColors.primary600 : Colors.transparent,
                       width: 3,
                     ),
                   ),

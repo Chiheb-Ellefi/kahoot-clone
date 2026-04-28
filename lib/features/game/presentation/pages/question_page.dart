@@ -10,6 +10,8 @@ import '../cubit/game_state.dart';
 import '../../data/models/game_session_model.dart';
 import '../../../quiz/data/models/question_model.dart';
 import '../../../quiz/data/models/answer_model.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/responsive_container.dart';
 
 /// Displays the current active question with a countdown timer and
 /// 4 Kahoot-style answer buttons.
@@ -105,7 +107,7 @@ class _QuestionPageState extends State<QuestionPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: const Color(0xFFE21B3C),
+              backgroundColor: AppColors.error400,
             ),
           );
         }
@@ -127,18 +129,20 @@ class _QuestionPageState extends State<QuestionPage>
         }
 
         if (q == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF2D0A5E),
-            body: Center(
+          return Scaffold(
+            backgroundColor: AppColors.primary800,
+            body: const Center(
               child: CircularProgressIndicator(color: Colors.white),
             ),
           );
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF2D0A5E),
+          backgroundColor: AppColors.primary800,
           body: SafeArea(
-            child: Column(
+            child: ResponsiveContainer(
+              maxWidth: 800,
+              child: Column(
               children: [
                 // ── Timer + question card ────────────────────────────
                 Expanded(
@@ -259,7 +263,7 @@ class _QuestionPageState extends State<QuestionPage>
                         : const SizedBox.shrink(),
                   ),
                 ),
-              ],
+              ]),
             ),
           ),
         );
@@ -285,9 +289,9 @@ class _CountdownCircle extends StatelessWidget {
 
   Color get _arcColor {
     final pct = remaining / total;
-    if (pct > 0.6) return const Color(0xFF26890C);
-    if (pct > 0.3) return const Color(0xFFE6820B);
-    return const Color(0xFFE21B3C);
+    if (pct > 0.6) return AppColors.success400;
+    if (pct > 0.3) return AppColors.accent400;
+    return AppColors.error400;
   }
 
   @override

@@ -6,12 +6,14 @@ class PlayerModel extends Equatable {
   final String nickname;
   final int score;
   final int rank;
+  final String? avatarUrl;
 
   const PlayerModel({
     required this.id,
     required this.nickname,
     required this.score,
     required this.rank,
+    this.avatarUrl,
   });
 
   factory PlayerModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class PlayerModel extends Equatable {
       nickname: json['nickname'] as String? ?? '',
       score: (json['score'] as num?)?.toInt() ?? 0,
       rank: (json['rank'] as num?)?.toInt() ?? 0,
+      avatarUrl: json['avatarUrl'] as String?,
     );
   }
 
@@ -28,8 +31,9 @@ class PlayerModel extends Equatable {
         'nickname': nickname,
         'score': score,
         'rank': rank,
+        if (avatarUrl != null) 'avatarUrl': avatarUrl,
       };
 
   @override
-  List<Object?> get props => [id, nickname, score, rank];
+  List<Object?> get props => [id, nickname, score, rank, avatarUrl];
 }

@@ -6,6 +6,9 @@ import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
 import '../../data/models/player_model.dart';
 import '../../data/models/leaderboard_model.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/widgets/responsive_container.dart';
 
 /// Shows the ranked leaderboard between questions or as the final results.
 /// Host sees "Next Question" button; players see their rank only.
@@ -20,6 +23,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _slideCtrl;
   late Animation<Offset> _slideAnim;
+  bool _hasShownResult = false;
 
   @override
   void initState() {
@@ -58,9 +62,9 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       },
       builder: (context, state) {
         if (state is GameLoading) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF2D0A5E),
-            body: Center(
+          return Scaffold(
+            backgroundColor: AppColors.primary800,
+            body: const Center(
               child: CircularProgressIndicator(color: Colors.white),
             ),
           );
@@ -82,10 +86,22 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         final gameCubit = context.read<GameCubit>();
         final isHost = gameCubit.isHost;
 
+        if (isFinal && !_hasShownResult && lb != null && !isHost) {
+          _hasShownResult = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final myRank = lb!.players.indexWhere((p) => p.id == gameCubit.playerId);
+            if (myRank == 0) {
+              DialogUtils.showSuccess(context, '🎉 Congratulations!', 'You won the game!');
+            } else {
+              DialogUtils.showError(context, '😢 Good luck next time!', onClose: () {});
+            }
+          });
+        }
+
         return Scaffold(
-          backgroundColor: const Color(0xFF2D0A5E),
+          backgroundColor: AppColors.primary800,
           appBar: AppBar(
-            backgroundColor: const Color(0xFF46178F),
+            backgroundColor: AppColors.primary600,
             automaticallyImplyLeading: false,
             title: Text(
               isFinal ? '🏆 Final Results' : '⚡ Leaderboard',
@@ -117,8 +133,10 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                 )
               : SlideTransition(
                   position: _slideAnim,
-                  child: CustomScrollView(
-                    slivers: [
+                  child: ResponsiveContainer(
+                    maxWidth: 800,
+                    child: CustomScrollView(
+                      slivers: [
                       const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                       // ── Podium top 3 ─────────────────────────────────
@@ -157,7 +175,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                                 onPressed: () =>
                                     gameCubit.goToNextQuestion(),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF46178F),
+                                  backgroundColor: AppColors.primary600,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -179,6 +197,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                     ],
                   ),
                 ),
+              ),
         );
       },
     );
@@ -286,6 +305,17 @@ class _PodiumColumn extends StatelessWidget {
             style: const TextStyle(fontSize: 22),
           ),
           const SizedBox(height: 4),
+          if (player.avatarUrl != null)
+            CircleAvatar(
+              radius: 18,
+              backgroundImage: NetworkImage(player.avatarUrl!),
+            )
+          else
+            const CircleAvatar(
+              radius: 18,
+              child: Icon(Icons.person, size: 20),
+            ),
+          const SizedBox(height: 4),
           Text(
             player.nickname,
             style: GoogleFonts.nunito(
@@ -375,6 +405,17 @@ class _RankRow extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          if (player.avatarUrl != null)
+            CircleAvatar(
+              radius: 16,
+              backgroundImage: NetworkImage(player.avatarUrl!),
+            )
+          else
+            const CircleAvatar(
+              radius: 16,
+              child: Icon(Icons.person, size: 16),
+            ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

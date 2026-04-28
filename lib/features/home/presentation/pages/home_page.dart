@@ -10,6 +10,8 @@ import '../../data/repositories/quiz_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../quiz/data/models/quiz_model.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -19,7 +21,7 @@ class HomePage extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFF2D0A5E),
+        backgroundColor: AppColors.primary800,
         appBar: _buildAppBar(context),
         body: const _HomeBody(),
         floatingActionButton: FloatingActionButton.extended(
@@ -30,7 +32,7 @@ class HomePage extends StatelessWidget {
               context.read<HomeCubit>().loadQuizzes();
             }
           },
-          backgroundColor: const Color(0xFFE21B3C),
+          backgroundColor: AppColors.error400,
           icon: const Icon(Icons.add, color: Colors.white),
           label: Text(
             'Create Quiz',
@@ -46,14 +48,14 @@ class HomePage extends StatelessWidget {
 
   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: const Color(0xFF46178F),
+      backgroundColor: AppColors.primary600,
       elevation: 0,
       title: Row(
         children: [
           const Icon(Icons.quiz_rounded, color: Colors.white, size: 28),
           const SizedBox(width: 8),
           Text(
-            'Kaboot',
+            AppConstants.appName,
             style: GoogleFonts.nunito(
               color: Colors.white,
               fontSize: 22,
@@ -84,10 +86,12 @@ class HomePage extends StatelessWidget {
       ],
       bottom: TabBar(
         indicatorColor: Colors.white,
-        indicatorWeight: 3,
+        indicatorWeight: 4,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
         labelStyle: GoogleFonts.nunito(
           fontWeight: FontWeight.w800,
-          fontSize: 14,
+          fontSize: 16,
         ),
         unselectedLabelStyle: GoogleFonts.nunito(
           fontWeight: FontWeight.w600,
