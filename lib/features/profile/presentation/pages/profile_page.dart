@@ -304,50 +304,63 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       const SizedBox(height: 32),
 
-                      // ── Stats placeholder ───────────────────────────
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.07),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your Stats',
-                              style: GoogleFonts.nunito(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
+                      // ── Stats ───────────────────────────────────────
+                      Builder(builder: (context) {
+                        final user = state is ProfileLoaded
+                            ? state.user
+                            : state is ProfileUpdated
+                                ? state.user
+                                : null;
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Stats',
+                                style: GoogleFonts.nunito(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceAround,
-                              children: const [
-                                _StatBadge(
-                                  icon: Icons.quiz_outlined,
-                                  label: 'Quizzes\nCreated',
-                                  value: '—',
-                                ),
-                                _StatBadge(
-                                  icon: Icons.gamepad_outlined,
-                                  label: 'Games\nPlayed',
-                                  value: '—',
-                                ),
-                                _StatBadge(
-                                  icon: Icons.emoji_events_outlined,
-                                  label: 'Best\nRank',
-                                  value: '—',
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  _StatBadge(
+                                    icon: Icons.quiz_outlined,
+                                    label: 'Quizzes\nCreated',
+                                    value: user != null
+                                        ? '${user.quizzesCreated}'
+                                        : '—',
+                                  ),
+                                  _StatBadge(
+                                    icon: Icons.gamepad_outlined,
+                                    label: 'Games\nPlayed',
+                                    value: user != null
+                                        ? '${user.gamesPlayed}'
+                                        : '—',
+                                  ),
+                                  _StatBadge(
+                                    icon: Icons.emoji_events_outlined,
+                                    label: 'Best\nRank',
+                                    value: user?.bestRank != null
+                                        ? '#${user!.bestRank}'
+                                        : '—',
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
 
                       const SizedBox(height: 32),
                     ],
