@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
-
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -63,7 +65,7 @@ class _LoginPageState extends State<LoginPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: const Color(0xFFE21B3C),
+              backgroundColor: AppColors.error400,
             ),
           );
         }
@@ -72,7 +74,7 @@ class _LoginPageState extends State<LoginPage>
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF46178F), Color(0xFF2D0A5E)],
+              colors: [AppColors.primary600, AppColors.primary800],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -96,11 +98,11 @@ class _LoginPageState extends State<LoginPage>
                         Container(
                           padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.neutral50,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
+                                color: AppColors.neutral800.withOpacity(0.25),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                               ),
@@ -112,11 +114,11 @@ class _LoginPageState extends State<LoginPage>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Text(
-                                  'Welcome back!',
+                                  context.l10n.t('welcomeBack'),
                                   style: GoogleFonts.nunito(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w900,
-                                    color: const Color(0xFF46178F),
+                                    color: AppColors.primary600,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -148,7 +150,7 @@ class _LoginPageState extends State<LoginPage>
                                       _obscurePassword
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      color: Colors.grey,
+                                      color: AppColors.neutral400,
                                     ),
                                     onPressed: () => setState(
                                       () => _obscurePassword =
@@ -173,8 +175,8 @@ class _LoginPageState extends State<LoginPage>
                                             : () => _submit(context),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor:
-                                              const Color(0xFF46178F),
-                                          foregroundColor: Colors.white,
+                                              AppColors.primary600,
+                                          foregroundColor: AppColors.neutral50,
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(12),
@@ -186,12 +188,12 @@ class _LoginPageState extends State<LoginPage>
                                                 width: 22,
                                                 child:
                                                     CircularProgressIndicator(
-                                                  color: Colors.white,
+                                                  color: AppColors.neutral50,
                                                   strokeWidth: 2.5,
                                                 ),
                                               )
                                             : Text(
-                                                'Log In',
+                                                context.l10n.t('logIn'),
                                                 style: GoogleFonts.nunito(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w900,
@@ -213,22 +215,22 @@ class _LoginPageState extends State<LoginPage>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              "Don't have an account? ",
+                              context.l10n.t('dontHaveAccount'),
                               style: GoogleFonts.nunito(
-                                color: Colors.white70,
+                                color: AppColors.neutral200,
                                 fontSize: 14,
                               ),
                             ),
                             GestureDetector(
                               onTap: () => context.push('/register'),
                               child: Text(
-                                'Sign up',
+                                context.l10n.t('signUp'),
                                 style: GoogleFonts.nunito(
-                                  color: Colors.white,
+                                  color: AppColors.neutral50,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 14,
                                   decoration: TextDecoration.underline,
-                                  decorationColor: Colors.white,
+                                  decorationColor: AppColors.neutral50,
                                 ),
                               ),
                             ),
@@ -264,11 +266,11 @@ class QuizBlitzLogo extends StatelessWidget {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.neutral50,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: AppColors.neutral800.withOpacity(0.3),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -276,17 +278,17 @@ class QuizBlitzLogo extends StatelessWidget {
           ),
           child: const Icon(
             Icons.quiz_rounded,
-            color: Color(0xFF46178F),
+            color: AppColors.primary600,
             size: 48,
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          'QuizBlitz',
+          AppConstants.appName,
           style: GoogleFonts.nunito(
             fontSize: 36,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: AppColors.neutral50,
             letterSpacing: 1.2,
           ),
         ),
@@ -294,7 +296,7 @@ class QuizBlitzLogo extends StatelessWidget {
           'Play. Learn. Compete.',
           style: GoogleFonts.nunito(
             fontSize: 14,
-            color: Colors.white60,
+            color: AppColors.neutral200.withOpacity(0.8),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -332,17 +334,17 @@ class CardTextField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: obscureText,
       style: GoogleFonts.nunito(
-        color: const Color(0xFF1A1A2E),
+        color: AppColors.neutral800,
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF46178F)),
+        prefixIcon: Icon(icon, color: AppColors.primary600),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: const Color(0xFFF5F0FF),
-        labelStyle: const TextStyle(color: Color(0xFF46178F)),
+        fillColor: AppColors.primary50,
+        labelStyle: const TextStyle(color: AppColors.primary600),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -350,17 +352,17 @@ class CardTextField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: Color(0xFF46178F), width: 1.5),
+              const BorderSide(color: AppColors.primary600, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: Color(0xFFE21B3C), width: 1.5),
+              const BorderSide(color: AppColors.error400, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: Color(0xFFE21B3C), width: 1.5),
+              const BorderSide(color: AppColors.error400, width: 1.5),
         ),
       ),
       validator: validator,

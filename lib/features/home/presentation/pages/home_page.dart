@@ -8,11 +8,15 @@ import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
 import '../../data/repositories/quiz_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart' as auth_state;
 import '../../../quiz/data/models/quiz_model.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_colors.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/services/app_settings_service.dart';
+import '../../../../core/widgets/avatar_widget.dart';
+import '../../../../core/utils/supabase_storage.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -33,11 +37,11 @@ class HomePage extends StatelessWidget {
             }
           },
           backgroundColor: AppColors.error400,
-          icon: const Icon(Icons.add, color: Colors.white),
+          icon: const Icon(Icons.add, color: AppColors.neutral50),
           label: Text(
-            'Create Quiz',
+            context.l10n.t('createQuiz'),
             style: GoogleFonts.nunito(
-              color: Colors.white,
+              color: AppColors.neutral50,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -52,12 +56,12 @@ class HomePage extends StatelessWidget {
       elevation: 0,
       title: Row(
         children: [
-          const Icon(Icons.quiz_rounded, color: Colors.white, size: 28),
+          const Icon(Icons.quiz_rounded, color: AppColors.neutral50, size: 28),
           const SizedBox(width: 8),
           Text(
             AppConstants.appName,
             style: GoogleFonts.nunito(
-              color: Colors.white,
+              color: AppColors.neutral50,
               fontSize: 22,
               fontWeight: FontWeight.w900,
             ),
@@ -67,28 +71,94 @@ class HomePage extends StatelessWidget {
       actions: [
         // Join game button
         IconButton(
-          tooltip: 'Join a game',
-          icon: const Icon(Icons.gamepad_outlined, color: Colors.white),
+          tooltip: context.l10n.t('joinGame'),
+          icon: const Icon(Icons.gamepad_outlined, color: AppColors.neutral50),
           onPressed: () => context.push('/join'),
         ),
-        // Profile avatar
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.tune, color: AppColors.neutral50),
+          onSelected: (value) {
+            switch (value) {
+              case 'theme_system':
+                AppSettingsService.instance.setThemeMode(ThemeMode.system);
+                break;
+              case 'theme_light':
+                AppSettingsService.instance.setThemeMode(ThemeMode.light);
+                break;
+              case 'theme_dark':
+                AppSettingsService.instance.setThemeMode(ThemeMode.dark);
+                break;
+              case 'lang_en':
+                AppSettingsService.instance.setLocale(const Locale('en'));
+                break;
+              case 'lang_fr':
+                AppSettingsService.instance.setLocale(const Locale('fr'));
+                break;
+              case 'lang_ar':
+                AppSettingsService.instance.setLocale(const Locale('ar'));
+                break;
+            }
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: 'theme_system',
+              child: Text('${context.l10n.t('theme')}: ${context.l10n.t('system')}'),
+            ),
+            PopupMenuItem(
+              value: 'theme_light',
+              child: Text('${context.l10n.t('theme')}: ${context.l10n.t('light')}'),
+            ),
+            PopupMenuItem(
+              value: 'theme_dark',
+              child: Text('${context.l10n.t('theme')}: ${context.l10n.t('dark')}'),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'lang_en',
+              child: Text('${context.l10n.t('language')}: ${context.l10n.t('english')}'),
+            ),
+            PopupMenuItem(
+              value: 'lang_fr',
+              child: Text('${context.l10n.t('language')}: ${context.l10n.t('french')}'),
+            ),
+            PopupMenuItem(
+              value: 'lang_ar',
+              child: Text('${context.l10n.t('language')}: ${context.l10n.t('arabic')}'),
+            ),
+          ],
+        ),
+        // ✅ Profile avatar with AvatarWidget
         GestureDetector(
           onTap: () => context.push('/profile'),
           child: Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.white24,
-              child: const Icon(Icons.person, color: Colors.white, size: 20),
+            child: BlocBuilder<AuthCubit, auth_state.AuthState>(
+              builder: (context, authState) {
+                String? avatarUrl;
+                String username = context.l10n.t('player');
+
+                if (authState is auth_state.AuthAuthenticated) {
+                  avatarUrl = authState.user.avatarUrl;
+                  username = authState.user.username;
+                }
+
+                return AvatarWidget(
+                  avatarUrl: avatarUrl,
+                  username: username,
+                  radius: 18,
+                  showBorder: false,
+                );
+              },
             ),
           ),
         ),
       ],
+      // ✅ FIXED: Clear visible tab labels
       bottom: TabBar(
-        indicatorColor: Colors.white,
+        indicatorColor: AppColors.accent400,
         indicatorWeight: 4,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white70,
+        labelColor: AppColors.neutral50,
+        unselectedLabelColor: AppColors.neutral200,
         labelStyle: GoogleFonts.nunito(
           fontWeight: FontWeight.w800,
           fontSize: 16,
@@ -97,9 +167,15 @@ class HomePage extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
-        tabs: const [
-          Tab(text: 'Make'),
-          Tab(text: 'My Quizzes'),
+        tabs: [
+          Tab(
+            icon: Icon(Icons.add_circle_outline, size: 24),
+            text: context.l10n.t('make'),
+          ),
+          Tab(
+            icon: Icon(Icons.library_books_outlined, size: 24),
+            text: context.l10n.t('myQuizzes'),
+          ),
         ],
       ),
     );
@@ -115,7 +191,7 @@ class _HomeBody extends StatelessWidget {
       builder: (context, state) {
         if (state is HomeLoading || state is HomeInitial) {
           return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
+            child: CircularProgressIndicator(color: AppColors.neutral50),
           );
         }
         if (state is HomeError) {
@@ -160,12 +236,12 @@ class _QuizGrid extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.quiz_outlined, color: Colors.white30, size: 64),
+            Icon(Icons.quiz_outlined, color: AppColors.neutral200.withOpacity(0.35), size: 64),
             const SizedBox(height: 16),
             Text(
               emptyMessage,
               style: GoogleFonts.nunito(
-                color: Colors.white54,
+                color: AppColors.neutral200.withOpacity(0.7),
                 fontSize: 16,
               ),
             ),
@@ -176,20 +252,34 @@ class _QuizGrid extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: () => context.read<HomeCubit>().loadQuizzes(),
-      color: const Color(0xFF46178F),
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.85,
-        ),
-        itemCount: quizzes.length,
-        itemBuilder: (context, i) => _QuizCard(
-          quiz: quizzes[i],
-          showOwnerActions: showOwnerActions,
-        ),
+      color: AppColors.primary800,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final crossAxisCount = width >= 1300
+              ? 4
+              : width >= 950
+                  ? 3
+                  : width >= 620
+                      ? 2
+                      : 1;
+          final spacing = width >= 950 ? 16.0 : 12.0;
+          final aspectRatio = width >= 950 ? 0.95 : 0.85;
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+              childAspectRatio: aspectRatio,
+            ),
+            itemCount: quizzes.length,
+            itemBuilder: (context, i) => _QuizCard(
+              quiz: quizzes[i],
+              showOwnerActions: showOwnerActions,
+            ),
+          );
+        },
       ),
     );
   }
@@ -203,27 +293,27 @@ class _QuizCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push('/quizzes/${quiz.id}'),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Cover image
+    return _HoverLift(
+      child: GestureDetector(
+        onTap: () => context.push('/quizzes/${quiz.id}'),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: AppColors.neutral50,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.neutral800.withOpacity(0.2),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Expanded(
                 flex: 3,
                 child: quiz.coverImageUrl != null
@@ -231,10 +321,10 @@ class _QuizCard extends StatelessWidget {
                         imageUrl: quiz.coverImageUrl!,
                         fit: BoxFit.cover,
                         placeholder: (_, __) => Container(
-                          color: const Color(0xFFEDE7F6),
+                          color: AppColors.primary50,
                           child: const Icon(
                             Icons.image_outlined,
-                            color: Color(0xFF46178F),
+                            color: AppColors.primary800,
                             size: 36,
                           ),
                         ),
@@ -243,8 +333,6 @@ class _QuizCard extends StatelessWidget {
                       )
                     : _PlaceholderCover(title: quiz.title),
               ),
-
-              // Info row
               Expanded(
                 flex: 2,
                 child: Padding(
@@ -257,7 +345,7 @@ class _QuizCard extends StatelessWidget {
                         style: GoogleFonts.nunito(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          color: const Color(0xFF1A1A2E),
+                          color: AppColors.neutral800,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -268,14 +356,14 @@ class _QuizCard extends StatelessWidget {
                           const Icon(
                             Icons.help_outline,
                             size: 13,
-                            color: Color(0xFF46178F),
+                            color:AppColors.primary800,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '${quiz.questionCount} questions',
                             style: GoogleFonts.nunito(
                               fontSize: 11,
-                              color: Colors.grey[600],
+                              color: AppColors.neutral600,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -289,7 +377,8 @@ class _QuizCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -302,10 +391,10 @@ class _PlaceholderCover extends StatelessWidget {
   const _PlaceholderCover({required this.title});
 
   static const _colors = [
-    Color(0xFF46178F),
-    Color(0xFF1368CE),
-    Color(0xFFE21B3C),
-    Color(0xFF26890C),
+    AppColors.primary600,
+    AppColors.primary400,
+    AppColors.error400,
+    AppColors.success400,
   ];
 
   @override
@@ -319,7 +408,7 @@ class _PlaceholderCover extends StatelessWidget {
         style: GoogleFonts.nunito(
           fontSize: 40,
           fontWeight: FontWeight.w900,
-          color: Colors.white,
+          color: AppColors.neutral50,
         ),
       ),
     );
@@ -333,7 +422,7 @@ class _OwnerMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+      icon: const Icon(Icons.more_vert, size: 18, color: AppColors.neutral400),
       onSelected: (value) async {
         if (value == 'edit') {
           final result = await context.push('/quizzes/${quiz.id}/edit');
@@ -357,7 +446,7 @@ class _OwnerMenu extends StatelessWidget {
         const PopupMenuItem(value: 'edit', child: Text('Edit')),
         const PopupMenuItem(
           value: 'delete',
-          child: Text('Delete', style: TextStyle(color: Colors.red)),
+          child: Text('Delete', style: TextStyle(color: AppColors.error400)),
         ),
       ],
     );
@@ -377,7 +466,7 @@ class _OwnerMenu extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child:
-                const Text('Delete', style: TextStyle(color: Colors.red)),
+                const Text('Delete', style: TextStyle(color: AppColors.error400)),
           ),
         ],
       ),
@@ -399,11 +488,11 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, color: Color(0xFFE21B3C), size: 56),
+            const Icon(Icons.error_outline, color: AppColors.error400, size: 56),
             const SizedBox(height: 16),
             Text(
               message,
-              style: GoogleFonts.nunito(color: Colors.white70, fontSize: 14),
+              style: GoogleFonts.nunito(color: AppColors.neutral200, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -434,13 +523,15 @@ class _MakeDashboard extends StatelessWidget {
             style: GoogleFonts.nunito(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.neutral50,
             ),
           ),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 800 ? 4 : (constraints.maxWidth > 400 ? 2 : 1);
+              final crossAxisCount = constraints.maxWidth > 800
+                  ? 4
+                  : (constraints.maxWidth > 400 ? 2 : 1);
               return GridView.count(
                 crossAxisCount: crossAxisCount,
                 crossAxisSpacing: 16,
@@ -452,7 +543,7 @@ class _MakeDashboard extends StatelessWidget {
                   _ActionCard(
                     title: 'Create content from scratch',
                     icon: Icons.add_box_rounded,
-                    color: const Color(0xFFF05D22), // Orange-Red
+                    color: AppColors.error400,
                     onTap: () async {
                       final result = await context.push('/quizzes/create');
                       if (result == true && context.mounted) {
@@ -463,19 +554,19 @@ class _MakeDashboard extends StatelessWidget {
                   _ActionCard(
                     title: 'Save time! Create with AI',
                     icon: Icons.auto_awesome,
-                    color: const Color(0xFF864CBF), // Purple
+                    color: AppColors.primary400,
                     onTap: () => _showAiDialog(context),
                   ),
                   _ActionCard(
                     title: 'Quickly create from study notes',
                     icon: Icons.picture_as_pdf,
-                    color: const Color(0xFFE21B3C), // Red
+                    color: AppColors.error400,
                     onTap: () => _uploadPdf(context),
                   ),
                   _ActionCard(
                     title: 'Turn presentations into engaging experiences',
                     icon: Icons.slideshow,
-                    color: const Color(0xFF1368CE), // Blue
+                    color:  AppColors.primary400,
                     onTap: () => _uploadPpt(context),
                   ),
                 ],
@@ -492,19 +583,20 @@ class _MakeDashboard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2D0A5E),
+        backgroundColor: AppColors.primary800,
         title: Text(
           'Generate with AI',
-          style: GoogleFonts.nunito(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.nunito(
+              color: AppColors.neutral50, fontWeight: FontWeight.bold),
         ),
         content: TextField(
           controller: ctrl,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.neutral50),
           decoration: InputDecoration(
             hintText: 'Enter a topic (e.g. History of Rome)',
-            hintStyle: const TextStyle(color: Colors.white54),
+            hintStyle: TextStyle(color: AppColors.neutral200.withOpacity(0.7)),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.1),
+            fillColor: AppColors.neutral50.withOpacity(0.1),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
@@ -514,10 +606,12 @@ class _MakeDashboard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.neutral200)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF26890C)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor:AppColors.success400),
             onPressed: () {
               final prompt = ctrl.text.trim();
               if (prompt.isNotEmpty) {
@@ -525,7 +619,8 @@ class _MakeDashboard extends StatelessWidget {
                 _generateFromAi(context, prompt);
               }
             },
-            child: const Text('Generate', style: TextStyle(color: Colors.white)),
+            child: const Text('Generate',
+                style: TextStyle(color: AppColors.neutral50)),
           ),
         ],
       ),
@@ -538,7 +633,7 @@ class _MakeDashboard extends StatelessWidget {
       final repo = sl<QuizRepository>();
       final quiz = await repo.generateFromAi(prompt);
       if (context.mounted) {
-        Navigator.pop(context); // hide loading
+        Navigator.pop(context);
         final result = await context.push('/quizzes/${quiz.id}/edit');
         if (result == true && context.mounted) {
           context.read<HomeCubit>().loadQuizzes();
@@ -546,127 +641,114 @@ class _MakeDashboard extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // hide loading
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
- Future<void> _uploadPdf(BuildContext context) async {
-  final result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['pdf'],
-    withData: true,
-  );
-  if (result == null || result.files.isEmpty) return;
-
-  final file = result.files.first;
-  if (file.bytes == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not read file data.')),
+    Future<void> _uploadPdf(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      withData: true,
     );
-    return;
-  }
-
-  _showLoadingDialog(context, 'Uploading PDF...');
-  try {
-    // 1. Upload to Supabase Storage
-    final supabase = Supabase.instance.client;
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-    await supabase.storage
-        .from('documents')
-        .uploadBinary(fileName, file.bytes!);
-
-    // 2. Get public download URL
-    final fileUrl = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
-    // 3. Send URL to backend
-    final repo = sl<QuizRepository>();
-    final quiz = await repo.generateFromPdf(fileUrl: fileUrl, questionCount: 10);
-
-    if (context.mounted) {
-      Navigator.pop(context);
-      final reload = await context.push('/quizzes/${quiz.id}/edit');
-      if (reload == true && context.mounted) {
-        context.read<HomeCubit>().loadQuizzes();
+    if (result == null || result.files.isEmpty) return;
+ 
+    final file = result.files.first;
+    if (file.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not read file data.')),
+      );
+      return;
+    }
+ 
+    _showLoadingDialog(context, 'Uploading PDF...');
+    try {
+      // Upload to Supabase Storage and get the public URL
+      final fileUrl = await SupabaseStorageHelper.uploadDocument(file);
+ 
+      final repo = sl<QuizRepository>();
+      final quiz = await repo.generateFromPdf(
+          fileUrl: fileUrl, questionCount: 10);
+ 
+      if (context.mounted) {
+        Navigator.pop(context);
+        final reload = await context.push('/quizzes/${quiz.id}/edit');
+        if (reload == true && context.mounted) {
+          context.read<HomeCubit>().loadQuizzes();
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     }
-  } catch (e) {
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
   }
-}
 
-Future<void> _uploadPpt(BuildContext context) async {
-  final result = await FilePicker.platform.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: ['ppt', 'pptx'],
-    withData: true,
-  );
-  if (result == null || result.files.isEmpty) return;
 
-  final file = result.files.first;
-  if (file.bytes == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not read file data.')),
+   Future<void> _uploadPpt(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['ppt', 'pptx'],
+      withData: true,
     );
-    return;
-  }
-
-  _showLoadingDialog(context, 'Uploading Presentation...');
-  try {
-    // 1. Upload to Supabase Storage
-    final supabase = Supabase.instance.client;
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-    await supabase.storage
-        .from('documents')
-        .uploadBinary(fileName, file.bytes!);
-
-    // 2. Get public download URL
-    final fileUrl = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
-    // 3. Send URL to backend
-    final repo = sl<QuizRepository>();
-    final quiz = await repo.generateFromPptx(fileUrl: fileUrl, questionCount: 10);
-
-    if (context.mounted) {
-      Navigator.pop(context);
-      final reload = await context.push('/quizzes/${quiz.id}/edit');
-      if (reload == true && context.mounted) {
-        context.read<HomeCubit>().loadQuizzes();
+    if (result == null || result.files.isEmpty) return;
+ 
+    final file = result.files.first;
+    if (file.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not read file data.')),
+      );
+      return;
+    }
+ 
+    _showLoadingDialog(context, 'Uploading Presentation...');
+    try {
+      // Upload to Supabase Storage and get the public URL
+      final fileUrl = await SupabaseStorageHelper.uploadDocument(file);
+ 
+      final repo = sl<QuizRepository>();
+      final quiz = await repo.generateFromPptx(
+          fileUrl: fileUrl, questionCount: 10);
+ 
+      if (context.mounted) {
+        Navigator.pop(context);
+        final reload = await context.push('/quizzes/${quiz.id}/edit');
+        if (reload == true && context.mounted) {
+          context.read<HomeCubit>().loadQuizzes();
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     }
-  } catch (e) {
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
   }
-}
+ 
+
+
   void _showLoadingDialog(BuildContext context, String message) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF2D0A5E),
+        backgroundColor: AppColors.primary800,
         content: Row(
           children: [
-            const CircularProgressIndicator(color: Colors.white),
+            const CircularProgressIndicator(color: AppColors.neutral50),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 message,
-                style: GoogleFonts.nunito(color: Colors.white),
+                style: GoogleFonts.nunito(color: AppColors.neutral50),
               ),
             ),
           ],
@@ -691,43 +773,74 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            )
-          ],
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return _HoverLift(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.neutral800.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: AppColors.neutral50.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: Colors.white, size: 28),
+              child: Icon(icon, color: AppColors.neutral50, size: 28),
             ),
             const Spacer(),
             Text(
               title,
               style: GoogleFonts.nunito(
-                color: Colors.white,
+                color: AppColors.neutral50,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
                 height: 1.2,
               ),
             ),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverLift extends StatefulWidget {
+  final Widget child;
+  const _HoverLift({required this.child});
+
+  @override
+  State<_HoverLift> createState() => _HoverLiftState();
+}
+
+class _HoverLiftState extends State<_HoverLift> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 140),
+        scale: _hovered ? 1.015 : 1,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          transform: Matrix4.translationValues(0, _hovered ? -2 : 0, 0),
+          child: widget.child,
         ),
       ),
     );

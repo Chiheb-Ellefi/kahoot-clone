@@ -11,6 +11,7 @@ import '../../data/models/game_session_model.dart';
 import '../../../quiz/data/models/question_model.dart';
 import '../../../quiz/data/models/answer_model.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/audio_feedback_service.dart';
 import '../../../../core/widgets/responsive_container.dart';
 
 /// Displays the current active question with a countdown timer and
@@ -62,16 +63,15 @@ class _QuestionPageState extends State<QuestionPage>
       final diff = _endTime!.difference(now).inSeconds;
       
       if (diff != _remaining) {
+        // Subtle urgency cue in final countdown seconds.
+        if (diff > 0 && diff <= 5) {
+          AudioFeedbackService.instance.playTimerTick();
+        }
         setState(() => _remaining = diff >= 0 ? diff : 0);
       }
 
       if (_remaining <= 0) {
         _timer?.cancel();
-        // Time's up — show leaderboard
-        final cubit = context.read<GameCubit>();
-        if (cubit.isHost) {
-          cubit.requestShowLeaderboard();
-        }
       }
     });
   }
@@ -98,6 +98,11 @@ class _QuestionPageState extends State<QuestionPage>
           });
           _startTimer(state.question.timeLimit);
         } else if (state is GameAnswerResult) {
+          if (state.isCorrect) {
+            AudioFeedbackService.instance.playCorrectAnswer();
+          } else {
+            AudioFeedbackService.instance.playWrongAnswer();
+          }
           context.push('/game/answer-result', extra: context.read<GameCubit>());
         } else if (state is GameLeaderboardLoaded) {
           context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
@@ -132,7 +137,7 @@ class _QuestionPageState extends State<QuestionPage>
           return Scaffold(
             backgroundColor: AppColors.primary800,
             body: const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+              child: CircularProgressIndicator(color: AppColors.neutral50),
             ),
           );
         }
@@ -178,11 +183,11 @@ class _QuestionPageState extends State<QuestionPage>
                             width: double.infinity,
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.neutral50,
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: AppColors.neutral800.withOpacity(0.2),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -194,7 +199,7 @@ class _QuestionPageState extends State<QuestionPage>
                                 style: GoogleFonts.nunito(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF1A1A2E),
+                                  color: AppColors.primary800,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -338,7 +343,7 @@ class _ArcPainter extends CustomPainter {
       center,
       radius,
       Paint()
-        ..color = Colors.white12
+        ..color = AppColors.neutral50.withOpacity(0.12)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 6,
     );
@@ -408,13 +413,13 @@ class _AnswerButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  Icon(shape, color: Colors.white, size: 22),
+                  Icon(shape, color: AppColors.neutral50, size: 22),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       answer.text,
                       style: GoogleFonts.nunito(
-                        color: Colors.white,
+                        color: AppColors.neutral50,
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
                       ),

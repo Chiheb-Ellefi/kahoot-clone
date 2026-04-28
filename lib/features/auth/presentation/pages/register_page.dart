@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import 'login_page.dart' show QuizBlitzLogo, CardTextField;
-
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -70,7 +72,7 @@ class _RegisterPageState extends State<RegisterPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: const Color(0xFFE21B3C),
+              backgroundColor: AppColors.error400,
             ),
           );
         }
@@ -79,7 +81,7 @@ class _RegisterPageState extends State<RegisterPage>
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF46178F), Color(0xFF2D0A5E)],
+              colors: [AppColors.primary600, AppColors.primary800],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -103,11 +105,11 @@ class _RegisterPageState extends State<RegisterPage>
                         Container(
                           padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.neutral50,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.25),
+                                color: AppColors.neutral800.withOpacity(0.25),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                               ),
@@ -120,11 +122,11 @@ class _RegisterPageState extends State<RegisterPage>
                                   CrossAxisAlignment.stretch,
                               children: [
                                 Text(
-                                  'Create Account',
+                                  context.l10n.t('createAccount'),
                                   style: GoogleFonts.nunito(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w900,
-                                    color: const Color(0xFF46178F),
+                                    color: AppColors.primary600,
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -167,7 +169,7 @@ class _RegisterPageState extends State<RegisterPage>
                                       _obscurePassword
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      color: Colors.grey,
+                                      color: AppColors.neutral400,
                                     ),
                                     onPressed: () => setState(
                                       () => _obscurePassword =
@@ -192,7 +194,7 @@ class _RegisterPageState extends State<RegisterPage>
                                       _obscureConfirm
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
-                                      color: Colors.grey,
+                                      color: AppColors.neutral400,
                                     ),
                                     onPressed: () => setState(
                                       () => _obscureConfirm =
@@ -218,9 +220,9 @@ class _RegisterPageState extends State<RegisterPage>
                                         style:
                                             ElevatedButton.styleFrom(
                                           backgroundColor:
-                                              const Color(0xFF46178F),
+                                              AppColors.primary600,
                                           foregroundColor:
-                                              Colors.white,
+                                              AppColors.neutral50,
                                           shape:
                                               RoundedRectangleBorder(
                                             borderRadius:
@@ -234,12 +236,12 @@ class _RegisterPageState extends State<RegisterPage>
                                                 width: 22,
                                                 child:
                                                     CircularProgressIndicator(
-                                                  color: Colors.white,
+                                                  color: AppColors.neutral50,
                                                   strokeWidth: 2.5,
                                                 ),
                                               )
                                             : Text(
-                                                'Sign Up',
+                                                context.l10n.t('signUp'),
                                                 style:
                                                     GoogleFonts.nunito(
                                                   fontSize: 16,
@@ -263,23 +265,23 @@ class _RegisterPageState extends State<RegisterPage>
                               MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Already have an account? ',
+                              context.l10n.t('alreadyHaveAccount'),
                               style: GoogleFonts.nunito(
-                                color: Colors.white70,
+                                color: AppColors.neutral200,
                                 fontSize: 14,
                               ),
                             ),
                             GestureDetector(
                               onTap: () => context.pop(),
                               child: Text(
-                                'Log in',
+                                context.l10n.t('logIn'),
                                 style: GoogleFonts.nunito(
-                                  color: Colors.white,
+                                  color: AppColors.neutral50,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 14,
                                   decoration:
                                       TextDecoration.underline,
-                                  decorationColor: Colors.white,
+                                  decorationColor: AppColors.neutral50,
                                 ),
                               ),
                             ),

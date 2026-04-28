@@ -1,10 +1,12 @@
+export 'app_colors.dart';
+
 /// App-wide constants for QuizBlitz
 class AppConstants {
   AppConstants._();
 
   // App name
   static const String appName = 'Quizzo';
-
+  static const String gameName   = 'Quizzo';
   // Shared Preferences keys
   static const String tokenKey = 'jwt_token';
   static const String userIdKey = 'user_id';
@@ -25,6 +27,8 @@ class AppConstants {
 
   // Answer-result auto-advance delay (ms)
   static const int answerResultDelayMs = 2000;
+  // How long the leaderboard is shown before host can advance (ms)
+  static const int leaderboardPauseMs   = 4000;
 
   // Quizzo answer colors
   static const List<String> answerColors = [

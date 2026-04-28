@@ -7,6 +7,7 @@ import '../cubit/game_state.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/responsive_container.dart';
+import '../../../../core/constants/app_constants.dart';
 
 /// Handles both the Host lobby (show PIN + player list) and the
 /// Player lobby (enter PIN + nickname and join).
@@ -85,17 +86,20 @@ class _LobbyPageState extends State<LobbyPage> {
           );
         } else if (state is GameError) {
           String msg = state.message;
-          if (msg.toLowerCase().contains('not found') || msg.toLowerCase().contains('invalid pin')) {
+          if (msg.toLowerCase().contains('not found') || 
+              msg.toLowerCase().contains('invalid pin')) {
             msg = 'No game found with this PIN.';
           }
+          // ✅ FIXED: Added missing 'title' parameter
           DialogUtils.showError(
-            context, 
-            msg, 
+            context,
+            'Error',  // ✅ Added this parameter
+            msg,
             onClose: () {
               if (!widget.isHost) {
                 context.go('/join');
               }
-            }
+            },
           );
         }
       },
@@ -112,9 +116,9 @@ class _LobbyPageState extends State<LobbyPage> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────[...]
 // Host Lobby — displays PIN and live player list
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────[...]
 
 class _HostLobby extends StatelessWidget {
   final GameState state;
@@ -141,23 +145,22 @@ class _HostLobby extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: const Icon(Icons.close, color: AppColors.neutral50),
           onPressed: () {
             context.read<GameCubit>().reset();
             context.go('/home');
           },
         ),
-        title: Text(
-          'Game Lobby',
+        title: Text('${AppConstants.gameName} — Lobby',
           style: GoogleFonts.nunito(
-            color: Colors.white,
+            color: AppColors.neutral50,
             fontWeight: FontWeight.w900,
           ),
         ),
       ),
       body: isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+              child: CircularProgressIndicator(color: AppColors.neutral50),
             )
           : ResponsiveContainer(
               maxWidth: 600,
@@ -169,7 +172,7 @@ class _HostLobby extends StatelessWidget {
                 Text(
                   'Game PIN',
                   style: GoogleFonts.nunito(
-                    color: Colors.white60,
+                    color: AppColors.neutral200.withOpacity(0.8),
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -179,11 +182,11 @@ class _HostLobby extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 32, vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.neutral50,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: AppColors.neutral800.withOpacity(0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -194,7 +197,7 @@ class _HostLobby extends StatelessWidget {
                     style: GoogleFonts.nunito(
                       fontSize: 52,
                       fontWeight: FontWeight.w900,
-                      color: const Color(0xFF46178F),
+                      color: AppColors.primary800,
                       letterSpacing: 8,
                     ),
                   ),
@@ -203,7 +206,7 @@ class _HostLobby extends StatelessWidget {
                 Text(
                   'Share this PIN with players',
                   style: GoogleFonts.nunito(
-                    color: Colors.white54,
+                    color: AppColors.neutral200.withOpacity(0.7),
                     fontSize: 13,
                   ),
                 ),
@@ -215,7 +218,7 @@ class _HostLobby extends StatelessWidget {
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: AppColors.neutral50.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: players.isEmpty
@@ -228,7 +231,7 @@ class _HostLobby extends StatelessWidget {
                                 Text(
                                   'Waiting for players…',
                                   style: GoogleFonts.nunito(
-                                    color: Colors.white70,
+                                    color: AppColors.neutral200,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -242,7 +245,7 @@ class _HostLobby extends StatelessWidget {
                               Text(
                                 '${players.length} player${players.length == 1 ? '' : 's'} joined',
                                 style: GoogleFonts.nunito(
-                                  color: Colors.white70,
+                                  color: AppColors.neutral200,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
                                 ),
@@ -285,7 +288,7 @@ class _HostLobby extends StatelessWidget {
                         style: GoogleFonts.nunito(
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.neutral50,
                         ),
                       ),
                     ),
@@ -298,9 +301,9 @@ class _HostLobby extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────[...]
 // Player Lobby — enter PIN + nickname to join
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────[...]
 
 class _PlayerLobby extends StatelessWidget {
   final GameState state;
@@ -320,13 +323,13 @@ class _PlayerLobby extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: AppColors.neutral50),
           onPressed: () => context.go('/home'),
         ),
         title: Text(
           'Join Game',
           style: GoogleFonts.nunito(
-            color: Colors.white,
+            color: AppColors.neutral50,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -335,7 +338,7 @@ class _PlayerLobby extends StatelessWidget {
         maxWidth: 600,
         child: hasJoined
             ? _WaitingForHost()
-            : const Center(child: CircularProgressIndicator(color: Colors.white)),
+            : const Center(child: CircularProgressIndicator(color: AppColors.neutral50)),
       ),
     );
   }
@@ -353,7 +356,7 @@ class _WaitingForHost extends StatelessWidget {
           Text(
             'You\'re in!',
             style: GoogleFonts.nunito(
-              color: Colors.white,
+              color: AppColors.neutral50,
               fontSize: 28,
               fontWeight: FontWeight.w900,
             ),
@@ -362,7 +365,7 @@ class _WaitingForHost extends StatelessWidget {
           Text(
             'Waiting for the host to start…',
             style: GoogleFonts.nunito(
-              color: Colors.white70,
+              color: AppColors.neutral200,
               fontSize: 16,
             ),
           ),
@@ -372,20 +375,20 @@ class _WaitingForHost extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────[...]
 // Shared small widgets
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────[...]
 
 class _PlayerChip extends StatelessWidget {
   final String nickname;
   const _PlayerChip({required this.nickname});
 
   static const _colors = [
-    Color(0xFF1368CE),
-    Color(0xFFE21B3C),
-    Color(0xFF26890C),
-    Color(0xFFE6820B),
-  ];
+  AppColors.primary400,
+  AppColors.error400,
+  AppColors.success400,
+  AppColors.accent400,
+];
 
   @override
   Widget build(BuildContext context) {
@@ -399,7 +402,7 @@ class _PlayerChip extends StatelessWidget {
       child: Text(
         nickname,
         style: GoogleFonts.nunito(
-          color: Colors.white,
+          color: AppColors.neutral50,
           fontWeight: FontWeight.w800,
           fontSize: 14,
         ),
@@ -448,11 +451,11 @@ class _PulsingDotState extends State<_PulsingDot>
         width: widget.size,
         height: widget.size,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.neutral50,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.white.withOpacity(0.4),
+              color: AppColors.neutral50.withOpacity(0.4),
               blurRadius: 12,
               spreadRadius: 4,
             ),

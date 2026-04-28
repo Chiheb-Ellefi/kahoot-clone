@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/dialog_utils.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
 import '../../../../core/di/injection.dart';
@@ -22,7 +23,7 @@ class _JoinPageState extends State<JoinPage> {
   final _pinCtrl = TextEditingController();
   final _nicknameCtrl = TextEditingController();
   final _pageController = PageController();
-  String _selectedAvatar = 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix'; // Default fallback
+  String _selectedAvatar = 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix';
 
   final List<String> _avatars = [
     'https://api.dicebear.com/7.x/avataaars/png?seed=Felix',
@@ -43,26 +44,32 @@ class _JoinPageState extends State<JoinPage> {
     super.dispose();
   }
 
+  // ✅ ENHANCED: Better error handling for PIN entry
   void _onEnterPin() {
-    if (_pinCtrl.text.trim().length >= 4) {
-      final authState = context.read<AuthCubit>().state;
-      if (authState is AuthAuthenticated) {
-        final user = authState.user;
-        context.push('/game/lobby', extra: {
-          'pin': _pinCtrl.text.trim(),
-          'nickname': user.username.isNotEmpty ? user.username : 'Player',
-          'avatarUrl': user.avatarUrl ?? _selectedAvatar,
-          'isHost': false,
-        });
-      } else {
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
+    if (_pinCtrl.text.trim().length < 4) {
+      DialogUtils.showErrorSnackbar(
+        context,
+        '❌ No game found with this PIN',
+      );
+      return;
+    }
+
+    final authState = context.read<AuthCubit>().state;
+
+    if (authState is AuthAuthenticated) {
+      // ✅ AUTO-FILL: Authenticated user - skip nickname selection
+      final user = authState.user;
+      context.push('/game/lobby', extra: {
+        'pin': _pinCtrl.text.trim(),
+        'nickname': user.username.isNotEmpty ? user.username : 'Player',
+        'avatarUrl': user.avatarUrl ?? _getDefaultAvatar(),
+        'isHost': false,
+      });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid PIN')),
+      // ✅ ANONYMOUS: Show nickname/avatar selection
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
       );
     }
   }
@@ -70,13 +77,13 @@ class _JoinPageState extends State<JoinPage> {
   void _onJoinGame() {
     final nickname = _nicknameCtrl.text.trim();
     if (nickname.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a nickname')),
+      DialogUtils.showErrorSnackbar(
+        context,
+        '❌ Please enter a nickname',
       );
       return;
     }
 
-    // Pass the payload to the game lobby
     context.push('/game/lobby', extra: {
       'pin': _pinCtrl.text.trim(),
       'nickname': nickname,
@@ -85,9 +92,14 @@ class _JoinPageState extends State<JoinPage> {
     });
   }
 
+  String _getDefaultAvatar() {
+    return 'https://api.dicebear.com/7.x/avataaars/png?seed=Default';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isAvatarPage = _pageController.hasClients && _pageController.page?.round() == 1;
+    final isAvatarPage =
+        _pageController.hasClients && _pageController.page?.round() == 1;
     return PopScope(
       canPop: !isAvatarPage,
       onPopInvoked: (didPop) {
@@ -100,23 +112,39 @@ class _JoinPageState extends State<JoinPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.primary800,
+        backgroundColor: AppColors.primary800,  
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              if (_pageController.hasClients && _pageController.page?.round() == 1) {
-                _pageController.previousPage(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              } else {
-                context.pop();
-              }
-            },
-          ),
+            automaticallyImplyLeading: false,
+  leading: BlocBuilder<AuthCubit, AuthState>(
+    builder: (context, authState) {
+      final isAuthenticated = authState is AuthAuthenticated;
+      final isOnAvatarPage = _pageController.hasClients &&
+          _pageController.page?.round() == 1;
+ 
+      // Hide the back arrow for anonymous users on the PIN entry screen.
+      // Still show it on the avatar-selection page so they can go back to PIN.
+      if (!isAuthenticated && !isOnAvatarPage) return const SizedBox.shrink();
+ 
+      return IconButton(
+        icon: const Icon(Icons.arrow_back, color: AppColors.neutral50),
+        onPressed: () {
+          if (isOnAvatarPage) {
+            _pageController.previousPage(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          } else {
+            context.pop();
+          }
+        },
+      );
+    },
+  ),
+
+ 
+
           actions: [
             BlocBuilder<AuthCubit, AuthState>(
               builder: (context, state) {
@@ -128,7 +156,7 @@ class _JoinPageState extends State<JoinPage> {
                   child: Text(
                     'Host / Login',
                     style: GoogleFonts.nunito(
-                      color: Colors.white,
+                      color: AppColors.neutral50,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -153,39 +181,45 @@ class _JoinPageState extends State<JoinPage> {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Kaboot Logo
-            Text(
-              AppConstants.appName,
-              style: GoogleFonts.nunito(
-                fontSize: 56,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.5,
-              ),
-            ),
-            const SizedBox(height: 48),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 1100;
+            final isTablet = constraints.maxWidth >= 700 && !isDesktop;
+            final cardWidth = isDesktop ? 460.0 : (isTablet ? 420.0 : 340.0);
+            final titleSize = isDesktop ? 64.0 : (isTablet ? 60.0 : 52.0);
 
-            // Card
-            Container(
-              width: 320,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  AppConstants.appName,
+                  style: GoogleFonts.nunito(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.neutral50,
+                    letterSpacing: -1.5,
                   ),
-                ],
-              ),
-              child: child,
-            ),
-          ],
+                ),
+                const SizedBox(height: 48),
+                Container(
+                  width: cardWidth,
+                  padding: EdgeInsets.all(isDesktop ? 24 : 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.neutral50,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.neutral800.withOpacity(0.1),
+                        blurRadius: 12,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: child,
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -206,7 +240,7 @@ class _JoinPageState extends State<JoinPage> {
           decoration: InputDecoration(
             hintText: 'Game PIN',
             filled: true,
-            fillColor: Colors.grey[200],
+            fillColor: AppColors.neutral200,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
               borderSide: BorderSide.none,
@@ -220,8 +254,8 @@ class _JoinPageState extends State<JoinPage> {
           child: ElevatedButton(
             onPressed: _onEnterPin,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF333333),
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary600,
+              foregroundColor: AppColors.neutral50,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -248,7 +282,7 @@ class _JoinPageState extends State<JoinPage> {
           style: GoogleFonts.nunito(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+            color: AppColors.neutral800,
           ),
         ),
         const SizedBox(height: 12),
@@ -267,15 +301,17 @@ class _JoinPageState extends State<JoinPage> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? AppColors.primary600 : Colors.transparent,
+                      color: isSelected
+                          ? AppColors.primary600
+                          : Colors.transparent,
                       width: 3,
                     ),
                   ),
                   child: CircleAvatar(
-                    backgroundColor: Colors.grey[200],
+                    backgroundColor: AppColors.neutral200,
                     radius: 26,
                     backgroundImage: NetworkImage(avatar),
-                    onBackgroundImageError: (_, __) {}, // Ignore errors silently
+                    onBackgroundImageError: (_, __) {},
                   ),
                 ),
               );
@@ -293,7 +329,7 @@ class _JoinPageState extends State<JoinPage> {
           decoration: InputDecoration(
             hintText: 'Nickname',
             filled: true,
-            fillColor: Colors.grey[200],
+            fillColor: AppColors.neutral200,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
               borderSide: BorderSide.none,
@@ -307,8 +343,8 @@ class _JoinPageState extends State<JoinPage> {
           child: ElevatedButton(
             onPressed: _onJoinGame,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF333333),
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary600,
+              foregroundColor: AppColors.neutral50,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),

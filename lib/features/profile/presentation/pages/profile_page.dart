@@ -11,6 +11,7 @@ import '../../../auth/data/models/user_model.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../../core/widgets/responsive_container.dart';
+import '../../../../core/widgets/avatar_widget.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -99,19 +100,18 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: AppColors.primary800,
           appBar: AppBar(
             backgroundColor: AppColors.primary600,
-            iconTheme: const IconThemeData(color: Colors.white),
+            iconTheme: const IconThemeData(color: AppColors.neutral50),
             title: Text(
               'Profile',
               style: GoogleFonts.nunito(
-                color: Colors.white,
+                color: AppColors.neutral50,
                 fontWeight: FontWeight.w900,
               ),
             ),
             actions: [
-              // Logout
               IconButton(
                 tooltip: 'Log out',
-                icon: const Icon(Icons.logout, color: Colors.white),
+                icon: const Icon(Icons.logout, color: AppColors.neutral50),
                 onPressed: () async {
                   await context.read<AuthCubit>().logout();
                   if (context.mounted) context.go('/login');
@@ -121,7 +121,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           body: state is ProfileLoading && state is! ProfileLoaded
               ? const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                  child: CircularProgressIndicator(color: AppColors.neutral50),
                 )
               : ResponsiveContainer(
                   maxWidth: 600,
@@ -131,235 +131,222 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         const SizedBox(height: 16),
 
-                      // ── Avatar ──────────────────────────────────────
-                      GestureDetector(
-                        onTap: _isEditing ? _pickAvatar : null,
-                        child: Stack(
-                          alignment: Alignment.bottomRight,
-                          children: [
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundColor: AppColors.primary600,
-                              backgroundImage: _avatarFile != null
-                                  ? NetworkImage(_avatarFile!.path) as ImageProvider
-                                  : CachedNetworkImageProvider(
-                                      _avatarUrl ?? 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix'),
-                            ),
-                            if (_isEditing)
-                              CircleAvatar(
-                                radius: 18,
-                                backgroundColor: AppColors.error400,
-                                child: _isUploadingAvatar
-                                    ? const SizedBox(
-                                        height: 14,
-                                        width: 14,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.camera_alt,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
+                        // ✅ ENHANCED: Avatar with AvatarWidget
+                        GestureDetector(
+                          onTap: _isEditing ? _pickAvatar : null,
+                          child: Stack(
+                            alignment: Alignment.bottomRight,
+                            children: [
+                              AvatarWidget(
+                                avatarUrl: _avatarUrl,
+                                username: _usernameCtrl.text.isNotEmpty
+                                    ? _usernameCtrl.text
+                                    : 'Profile',
+                                radius: 60,
+                                showBorder: true,
+                                borderColor: AppColors.primary400,
                               ),
-                          ],
+                              if (_isEditing)
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: AppColors.accent400,
+                                  child: _isUploadingAvatar
+                                      ? const SizedBox(
+                                          height: 14,
+                                          width: 14,
+                                          child: CircularProgressIndicator(
+                                            color: AppColors.neutral50,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.camera_alt,
+                                          color: AppColors.neutral50,
+                                          size: 18,
+                                        ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // ── Username field ──────────────────────────────
-                      _ProfileField(
-                        controller: _usernameCtrl,
-                        label: 'Username',
-                        icon: Icons.person_outline,
-                        enabled: _isEditing,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ── Email (read-only) ───────────────────────────
-                      if (state is ProfileLoaded)
                         _ProfileField(
-                          controller: TextEditingController(
-                              text: state.user.email),
-                          label: 'Email',
-                          icon: Icons.email_outlined,
-                          enabled: false,
+                          controller: _usernameCtrl,
+                          label: 'Username',
+                          icon: Icons.person_outline,
+                          enabled: _isEditing,
                         ),
-
-                      const SizedBox(height: 32),
-
-                      // ── Edit / Save button ──────────────────────────
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: _isEditing
-                            ? ElevatedButton.icon(
-                                onPressed:
-                                    state is ProfileLoading
-                                        ? null
-                                        : () => _saveProfile(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.success400,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(14),
-                                  ),
-                                ),
-                                icon: state is ProfileLoading
-                                    ? const SizedBox(
-                                        height: 18,
-                                        width: 18,
-                                        child:
-                                            CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(Icons.save_outlined,
-                                        color: Colors.white),
-                                label: Text(
-                                  'Save Changes',
-                                  style: GoogleFonts.nunito(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              )
-                            : ElevatedButton.icon(
-                                onPressed: () =>
-                                    setState(() => _isEditing = true),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary600,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(14),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.edit_outlined,
-                                    color: Colors.white),
-                                label: Text(
-                                  'Edit Profile',
-                                  style: GoogleFonts.nunito(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                      ),
-
-                      if (_isEditing) ...[
                         const SizedBox(height: 12),
+
+                        if (state is ProfileLoaded)
+                          _ProfileField(
+                            controller: TextEditingController(
+                                text: state.user.email),
+                            label: 'Email',
+                            icon: Icons.email_outlined,
+                            enabled: false,
+                          ),
+
+                        const SizedBox(height: 32),
+
                         SizedBox(
                           width: double.infinity,
                           height: 52,
-                          child: OutlinedButton(
-                            onPressed: () => setState(() {
-                              _isEditing = false;
-                              // Revert changes
-                              if (state is ProfileLoaded) {
-                                _usernameCtrl.text = state.user.username;
-                                _avatarUrl = state.user.avatarUrl;
-                                _avatarFile = null; // XFile has no state to reset beyond null
-                              }
-                            }),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(
-                                  color: Colors.white38),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Text(
-                              'Cancel',
-                              style: GoogleFonts.nunito(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
+                          child: _isEditing
+                              ? ElevatedButton.icon(
+                                  onPressed: state is ProfileLoading
+                                      ? null
+                                      : () => _saveProfile(context),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success400,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: state is ProfileLoading
+                                      ? const SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child: CircularProgressIndicator(
+                                            color: AppColors.neutral50,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.save_outlined,
+                                          color: AppColors.neutral50),
+                                  label: Text(
+                                    'Save Changes',
+                                    style: GoogleFonts.nunito(
+                                      color: AppColors.neutral50,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                )
+                              : ElevatedButton.icon(
+                                  onPressed: () => setState(
+                                      () => _isEditing = true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary600,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.edit_outlined,
+                                      color: AppColors.neutral50),
+                                  label: Text(
+                                    'Edit Profile',
+                                    style: GoogleFonts.nunito(
+                                      color: AppColors.neutral50,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
                         ),
-                      ],
 
-                      const SizedBox(height: 32),
-
-                      // ── Stats ───────────────────────────────────────
-                      Builder(builder: (context) {
-                        final user = state is ProfileLoaded
-                            ? state.user
-                            : state is ProfileUpdated
-                                ? state.user
-                                : null;
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Your Stats',
-                                style: GoogleFonts.nunito(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 16,
+                        if (_isEditing) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: OutlinedButton(
+                              onPressed: () => setState(() {
+                                _isEditing = false;
+                                if (state is ProfileLoaded) {
+                                  _usernameCtrl.text = state.user.username;
+                                  _avatarUrl = state.user.avatarUrl;
+                                  _avatarFile = null;
+                                }
+                              }),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.neutral50,
+                                side:
+                                    BorderSide(color: AppColors.neutral200.withOpacity(0.5)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  _StatBadge(
-                                    icon: Icons.quiz_outlined,
-                                    label: 'Quizzes\nCreated',
-                                    value: user != null
-                                        ? '${user.quizzesCreated}'
-                                        : '—',
-                                  ),
-                                  _StatBadge(
-                                    icon: Icons.gamepad_outlined,
-                                    label: 'Games\nPlayed',
-                                    value: user != null
-                                        ? '${user.gamesPlayed}'
-                                        : '—',
-                                  ),
-                                  _StatBadge(
-                                    icon: Icons.emoji_events_outlined,
-                                    label: 'Best\nRank',
-                                    value: user?.bestRank != null
-                                        ? '#${user!.bestRank}'
-                                        : '—',
-                                  ),
-                                ],
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.nunito(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                        );
-                      }),
+                        ],
 
-                      const SizedBox(height: 32),
-                    ],
+                        const SizedBox(height: 32),
+
+                        Builder(builder: (context) {
+                          final user = state is ProfileLoaded
+                              ? state.user
+                              : state is ProfileUpdated
+                                  ? state.user
+                                  : null;
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.neutral50.withOpacity(0.07),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Your Stats',
+                                  style: GoogleFonts.nunito(
+                                    color: AppColors.neutral50,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _StatBadge(
+                                      icon: Icons.quiz_outlined,
+                                      label: 'Quizzes\nCreated',
+                                      value: user != null
+                                          ? '${user.quizzesCreated}'
+                                          : '—',
+                                    ),
+                                    _StatBadge(
+                                      icon: Icons.gamepad_outlined,
+                                      label: 'Games\nPlayed',
+                                      value: user != null
+                                          ? '${user.gamesPlayed}'
+                                          : '—',
+                                    ),
+                                    _StatBadge(
+                                      icon: Icons.emoji_events_outlined,
+                                      label: 'Best\nRank',
+                                      value: user?.bestRank != null
+                                          ? '#${user!.bestRank}'
+                                          : '—',
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+
+                        const SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
-              ),
         );
       },
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared profile text field
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _ProfileField extends StatelessWidget {
   final TextEditingController controller;
@@ -380,21 +367,21 @@ class _ProfileField extends StatelessWidget {
       controller: controller,
       enabled: enabled,
       style: GoogleFonts.nunito(
-        color: enabled ? Colors.white : Colors.white60,
+        color: enabled ? AppColors.neutral50 : AppColors.neutral200.withOpacity(0.8),
         fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(
           icon,
-          color: enabled ? Colors.white70 : Colors.white38,
+          color: enabled ? AppColors.neutral200 : AppColors.neutral200.withOpacity(0.5),
         ),
         filled: true,
         fillColor: enabled
-            ? Colors.white.withOpacity(0.12)
-            : Colors.white.withOpacity(0.05),
+            ? AppColors.neutral50.withOpacity(0.12)
+            : AppColors.neutral50.withOpacity(0.05),
         labelStyle: TextStyle(
-          color: enabled ? Colors.white70 : Colors.white38,
+          color: enabled ? AppColors.neutral200 : AppColors.neutral200.withOpacity(0.5),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -402,7 +389,7 @@ class _ProfileField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white54, width: 1.5),
+          borderSide: BorderSide(color: AppColors.neutral200.withOpacity(0.7), width: 1.5),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -428,12 +415,12 @@ class _StatBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white54, size: 28),
+        Icon(icon, color: AppColors.neutral200.withOpacity(0.7), size: 28),
         const SizedBox(height: 6),
         Text(
           value,
           style: GoogleFonts.nunito(
-            color: Colors.white,
+            color: AppColors.neutral50,
             fontWeight: FontWeight.w900,
             fontSize: 20,
           ),
@@ -442,7 +429,7 @@ class _StatBadge extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.nunito(
-            color: Colors.white54,
+            color: AppColors.neutral200.withOpacity(0.7),
             fontSize: 11,
           ),
           textAlign: TextAlign.center,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../data/repositories/game_repository.dart';
 import '../../data/models/leaderboard_model.dart';
@@ -24,6 +25,8 @@ class GameCubit extends Cubit<GameState> {
 
   /// Whether this client is the host.
   bool isHost = false;
+  bool? _lastAnswerCorrect;
+  int _lastPointsEarned = 0;
 
   GameCubit(this._repo) : super(const GameInitial());
 
@@ -117,6 +120,8 @@ class GameCubit extends Cubit<GameState> {
     if (sessionId == null) return;
     emit(const GameLoading());
     try {
+      _lastAnswerCorrect = null;
+      _lastPointsEarned = 0;
       final question = await _repo.getCurrentQuestion(sessionId!);
       emit(GameQuestionActive(question: question, sessionId: sessionId!));
     } catch (e) {
@@ -141,7 +146,8 @@ class GameCubit extends Cubit<GameState> {
       );
       final isCorrect = (result['isCorrect'] as bool?) ?? (result['correct'] as bool?) ?? false;
       final pointsEarned = (result['pointsEarned'] as num?)?.toInt() ?? 0;
-      emit(GameAnswerResult(isCorrect: isCorrect, pointsEarned: pointsEarned));
+      _lastAnswerCorrect = isCorrect;
+      _lastPointsEarned = pointsEarned;
     } catch (e) {
       emit(GameError(e.toString()));
     }
@@ -159,11 +165,24 @@ class GameCubit extends Cubit<GameState> {
     }
   }
 
-  void requestShowLeaderboard() {
-    if (isHost) {
-      _sendWsMessage({'action': 'SHOW_LEADERBOARD'});
+  
+
+
+Future<void> _loadAndShowLeaderboard() async {
+    if (sessionId == null) return;
+    try {
+      final leaderboard = await _repo.getLeaderboard(sessionId!);
+      emit(GameShowLeaderboard(leaderboard));
+    } catch (e) {
+      // Fallback: still show whatever we can
+      emit(GameError(e.toString()));
     }
   }
+
+  void requestShowLeaderboard() {
+    if (isHost) _sendWsMessage({'action': 'SHOW_LEADERBOARD'});
+  }
+
 
   // ─── Host: Advance to next question ───────────────────────────────────
   Future<void> goToNextQuestion() async {
@@ -194,6 +213,8 @@ class GameCubit extends Cubit<GameState> {
     sessionId = null;
     playerId = null;
     _currentQuestionIndex = null;
+    _lastAnswerCorrect = null;
+    _lastPointsEarned = 0;
     isHost = false;
     emit(const GameInitial());
   }
@@ -251,6 +272,8 @@ class GameCubit extends Cubit<GameState> {
         await loadCurrentQuestion();
         break;
       case 'QUESTION_ACTIVE':
+        _lastAnswerCorrect = null;
+        _lastPointsEarned = 0;
         if (data['question'] != null) {
           emit(GameQuestionActive(
             question: QuestionModel.fromJson(data['question']),
@@ -259,6 +282,17 @@ class GameCubit extends Cubit<GameState> {
         } else {
           await loadCurrentQuestion();
         }
+        break;
+      case 'ALL_PLAYERS_ANSWERED':
+      case 'ROUND_COMPLETE':
+        emit(GameAnswerResult(
+          isCorrect: _lastAnswerCorrect ?? false,
+          pointsEarned: _lastPointsEarned,
+        ));
+        await Future<void>.delayed(
+          const Duration(milliseconds: AppConstants.answerResultDelayMs),
+        );
+        await _loadAndShowLeaderboard();
         break;
       case 'SHOW_LEADERBOARD':
         await loadLeaderboard();
