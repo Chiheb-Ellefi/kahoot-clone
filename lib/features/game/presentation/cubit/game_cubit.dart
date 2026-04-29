@@ -194,6 +194,7 @@ class GameCubit extends Cubit<GameState> {
   // ─── Load leaderboard (updated scores, called by answer_result_page) ───
   Future<void> loadLeaderboard() async {
     if (sessionId == null) return;
+    if (state is GameFinished) return;
     emit(const GameLoading());
     try {
       final leaderboard = await _repo.getLeaderboard(sessionId!);
@@ -339,7 +340,9 @@ class GameCubit extends Cubit<GameState> {
         break;
 
       case 'SHOW_LEADERBOARD':
-        await loadLeaderboard();
+        if (state is! GameFinished) {
+          await loadLeaderboard();
+        }
         break;
 
       case 'GAME_FINISHED':

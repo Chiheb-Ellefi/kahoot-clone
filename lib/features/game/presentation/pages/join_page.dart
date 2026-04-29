@@ -5,7 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/dialog_utils.dart';
+import '../../../../core/widgets/app_logo.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
 import '../../../../core/di/injection.dart';
@@ -64,7 +66,7 @@ class _JoinPageState extends State<JoinPage> {
     if (_pinCtrl.text.trim().length < 4) {
       DialogUtils.showErrorSnackbar(
         context,
-        '❌ No game found with this PIN',
+        '❌ ${context.l10n.t('noGameFoundWithPin')}',
       );
       return;
     }
@@ -76,7 +78,9 @@ class _JoinPageState extends State<JoinPage> {
       final user = authState.user;
       context.push('/game/lobby', extra: {
         'pin': _pinCtrl.text.trim(),
-        'nickname': user.username.isNotEmpty ? user.username : 'Player',
+        'nickname': user.username.isNotEmpty
+            ? user.username
+            : context.l10n.t('player'),
         'avatarUrl': user.avatarUrl ?? _getDefaultAvatar(),
         'isHost': false,
       });
@@ -94,7 +98,7 @@ class _JoinPageState extends State<JoinPage> {
     if (nickname.isEmpty) {
       DialogUtils.showErrorSnackbar(
         context,
-        '❌ Please enter a nickname',
+        '❌ ${context.l10n.t('pleaseEnterNickname')}',
       );
       return;
     }
@@ -169,7 +173,7 @@ class _JoinPageState extends State<JoinPage> {
                     ),
                     icon: const Icon(Icons.admin_panel_settings_rounded, size: 20),
                     label: Text(
-                      'Host / Login',
+                      context.l10n.t('hostLogin'),
                       style: GoogleFonts.nunito(
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
@@ -206,6 +210,11 @@ class _JoinPageState extends State<JoinPage> {
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const AppLogo(
+                  size: 64,
+                  color: AppColors.neutral50,
+                ),
+                const SizedBox(height: 12),
                 Text(
                   AppConstants.appName,
                   style: GoogleFonts.nunito(
@@ -253,7 +262,7 @@ class _JoinPageState extends State<JoinPage> {
             fontWeight: FontWeight.bold,
           ),
           decoration: InputDecoration(
-            hintText: 'Game PIN',
+            hintText: context.l10n.t('gamePin'),
             filled: true,
             fillColor: AppColors.neutral200,
             border: OutlineInputBorder(
@@ -276,7 +285,7 @@ class _JoinPageState extends State<JoinPage> {
               ),
             ),
             child: Text(
-              'Enter',
+              context.l10n.t('enter'),
               style: GoogleFonts.nunito(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -293,7 +302,7 @@ class _JoinPageState extends State<JoinPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Choose Avatar',
+          context.l10n.t('chooseAvatar'),
           style: GoogleFonts.nunito(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -342,7 +351,7 @@ class _JoinPageState extends State<JoinPage> {
             fontWeight: FontWeight.bold,
           ),
           decoration: InputDecoration(
-            hintText: 'Nickname',
+            hintText: context.l10n.t('nickname'),
             filled: true,
             fillColor: AppColors.neutral200,
             border: OutlineInputBorder(
@@ -365,7 +374,7 @@ class _JoinPageState extends State<JoinPage> {
               ),
             ),
             child: Text(
-              'OK, go!',
+              context.l10n.t('okGo'),
               style: GoogleFonts.nunito(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

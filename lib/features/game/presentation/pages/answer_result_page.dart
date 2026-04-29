@@ -123,6 +123,7 @@ class _AnswerResultPageState extends State<AnswerResultPage>
         if ((state is GameLeaderboardLoaded || state is GameFinished) &&
             _readyToNavigate) {
           _countdownTimer?.cancel();
+          AudioFeedbackService.instance.scheduleLeaderboardSound();
           context.pushReplacement('/game/leaderboard',
               extra: context.read<GameCubit>());
         }
@@ -140,6 +141,20 @@ class _AnswerResultPageState extends State<AnswerResultPage>
         }
       },
       builder: (context, state) {
+        if (context.read<GameCubit>().isHost) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            context.pushReplacement('/game/leaderboard',
+                extra: context.read<GameCubit>());
+          });
+          return const Scaffold(
+            backgroundColor: AppColors.primary800,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.neutral50),
+            ),
+          );
+        }
+
         final isCorrect = _isCorrect ?? false;
         final bgColor = isCorrect ? AppColors.success600 : AppColors.error600;
         final icon = isCorrect ? Icons.check_circle : Icons.cancel;

@@ -7,6 +7,7 @@ import '../cubit/auth_state.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_logo.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -294,10 +295,11 @@ class QuizBlitzLogo extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.quiz_rounded,
-            color: AppColors.primary600,
-            size: 48,
+          child: const Center(
+            child: AppLogo(
+              size: 48,
+              color: AppColors.primary600,
+            ),
           ),
         ),
         const SizedBox(height: 16),

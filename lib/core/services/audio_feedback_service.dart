@@ -6,6 +6,7 @@ class AudioFeedbackService {
   static final AudioFeedbackService instance = AudioFeedbackService._();
   AudioPlayer? _timerTickPlayer;
   DateTime? _lastTimerTickAt;
+  bool _pendingLeaderboardSound = false;
 
   Future<void> _playAsset(
     String fileName, {
@@ -58,4 +59,14 @@ class AudioFeedbackService {
 
   Future<void> playLeaderboardOpen() =>
       _playAsset('leaderboard.mp3', volume: 0.55);
+
+  void scheduleLeaderboardSound() {
+    _pendingLeaderboardSound = true;
+  }
+
+  Future<void> consumeLeaderboardSoundIfPending() async {
+    if (!_pendingLeaderboardSound) return;
+    _pendingLeaderboardSound = false;
+    await playLeaderboardOpen();
+  }
 }

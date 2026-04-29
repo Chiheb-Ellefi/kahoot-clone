@@ -9,6 +9,7 @@ import '../cubit/profile_state.dart';
 import '../../../../core/utils/supabase_storage.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../../core/widgets/responsive_container.dart';
 import '../../../../core/widgets/avatar_widget.dart';
@@ -57,7 +58,11 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isUploadingAvatar = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
+          SnackBar(
+            content: Text(
+              context.l10n.t('uploadFailed', params: {'error': '$e'}),
+            ),
+          ),
         );
       }
     }
@@ -81,8 +86,8 @@ class _ProfilePageState extends State<ProfilePage> {
           _initFromUser(state.user);
           setState(() => _isEditing = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile updated ✅'),
+            SnackBar(
+              content: Text(context.l10n.t('profileUpdated')),
               backgroundColor: AppColors.success400,
             ),
           );
@@ -102,7 +107,7 @@ class _ProfilePageState extends State<ProfilePage> {
             backgroundColor: AppColors.primary600,
             iconTheme: const IconThemeData(color: AppColors.neutral50),
             title: Text(
-              'Profile',
+              context.l10n.t('profile'),
               style: GoogleFonts.nunito(
                 color: AppColors.neutral50,
                 fontWeight: FontWeight.w900,
@@ -110,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             actions: [
               IconButton(
-                tooltip: 'Log out',
+                tooltip: context.l10n.t('logout'),
                 icon: const Icon(Icons.logout, color: AppColors.neutral50),
                 onPressed: () async {
                   await context.read<AuthCubit>().logout();
@@ -141,7 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 avatarUrl: _avatarUrl,
                                 username: _usernameCtrl.text.isNotEmpty
                                     ? _usernameCtrl.text
-                                    : 'Profile',
+                                    : context.l10n.t('profile'),
                                 radius: 60,
                                 showBorder: true,
                                 borderColor: AppColors.primary400,
@@ -173,7 +178,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                         _ProfileField(
                           controller: _usernameCtrl,
-                          label: 'Username',
+                          label: context.l10n.t('username'),
                           icon: Icons.person_outline,
                           enabled: _isEditing,
                         ),
@@ -183,7 +188,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           _ProfileField(
                             controller: TextEditingController(
                                 text: state.user.email),
-                            label: 'Email',
+                            label: context.l10n.t('email'),
                             icon: Icons.email_outlined,
                             enabled: false,
                           ),
@@ -216,7 +221,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       : const Icon(Icons.save_outlined,
                                           color: AppColors.neutral50),
                                   label: Text(
-                                    'Save Changes',
+                                    context.l10n.t('saveChanges'),
                                     style: GoogleFonts.nunito(
                                       color: AppColors.neutral50,
                                       fontWeight: FontWeight.w900,
@@ -236,7 +241,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   icon: const Icon(Icons.edit_outlined,
                                       color: AppColors.neutral50),
                                   label: Text(
-                                    'Edit Profile',
+                                    context.l10n.t('editProfile'),
                                     style: GoogleFonts.nunito(
                                       color: AppColors.neutral50,
                                       fontWeight: FontWeight.w900,
@@ -269,7 +274,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
                               child: Text(
-                                'Cancel',
+                                context.l10n.t('cancel'),
                                 style: GoogleFonts.nunito(
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -297,7 +302,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Your Stats',
+                                  context.l10n.t('yourStats'),
                                   style: GoogleFonts.nunito(
                                     color: AppColors.neutral50,
                                     fontWeight: FontWeight.w900,
@@ -311,21 +316,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                   children: [
                                     _StatBadge(
                                       icon: Icons.quiz_outlined,
-                                      label: 'Quizzes\nCreated',
+                                      label: context.l10n.t('quizzesCreated'),
                                       value: user != null
                                           ? '${user.quizzesCreated}'
                                           : '—',
                                     ),
                                     _StatBadge(
                                       icon: Icons.gamepad_outlined,
-                                      label: 'Games\nPlayed',
+                                      label: context.l10n.t('gamesPlayed'),
                                       value: user != null
                                           ? '${user.gamesPlayed}'
                                           : '—',
                                     ),
                                     _StatBadge(
                                       icon: Icons.emoji_events_outlined,
-                                      label: 'Best\nRank',
+                                      label: context.l10n.t('bestRank'),
                                       value: user?.bestRank != null
                                           ? '#${user!.bestRank}'
                                           : '—',

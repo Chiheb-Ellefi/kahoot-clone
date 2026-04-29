@@ -10,6 +10,7 @@ import '../../data/models/quiz_model.dart';
 import '../../data/models/question_model.dart';
 import '../../data/models/answer_model.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/supabase_storage.dart';
 
 /// Creates a brand-new quiz with questions and answers.
@@ -56,7 +57,11 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       setState(() => _isUploadingCover = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
+          SnackBar(
+            content: Text(
+              context.l10n.t('uploadFailed', params: {'error': '$e'}),
+            ),
+          ),
         );
       }
     }
@@ -76,7 +81,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     if (!_formKey.currentState!.validate()) return;
     if (_questions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one question.')),
+        SnackBar(content: Text(context.l10n.t('addAtLeastOneQuestion'))),
       );
       return;
     }
@@ -86,15 +91,26 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       final q = _questions[i];
       if (q.textCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Question ${i + 1} has no text.')),
+          SnackBar(
+            content: Text(
+              context.l10n.t(
+                'questionHasNoText',
+                params: {'index': '${i + 1}'},
+              ),
+            ),
+          ),
         );
         return;
       }
       if (!q.answers.any((a) => a.isCorrect)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Question ${i + 1} needs at least one correct answer.'),
+            content: Text(
+              context.l10n.t(
+                'questionNeedsCorrectAnswer',
+                params: {'index': '${i + 1}'},
+              ),
+            ),
           ),
         );
         return;
@@ -129,8 +145,8 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       listener: (context, state) {
         if (state is QuizSaved) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Quiz created! 🎉'),
+            SnackBar(
+              content: Text(context.l10n.t('quizCreated')),
               backgroundColor: Color(0xFF26890C),
             ),
           );
@@ -150,7 +166,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
           backgroundColor: const Color(0xFF46178F),
           iconTheme: const IconThemeData(color: Colors.white),
           title: Text(
-            'Create Quiz',
+            context.l10n.t('createQuiz'),
             style: GoogleFonts.nunito(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -171,7 +187,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                         ),
                       )
                     : Text(
-                        'Save',
+                        context.l10n.t('save'),
                         style: GoogleFonts.nunito(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
@@ -218,7 +234,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                             const SizedBox(height: 8),
                             if (!_isUploadingCover)
                               Text(
-                                'Add Cover Image',
+                                context.l10n.t('addCoverImage'),
                                 style: GoogleFonts.nunito(
                                   color: Colors.white54,
                                   fontWeight: FontWeight.w600,
@@ -249,17 +265,19 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               // ── Title ─────────────────────────────────────────────────
               DarkField(
                 controller: _titleCtrl,
-                label: 'Quiz Title',
-                hint: 'e.g. World Geography',
+                label: context.l10n.t('quizTitle'),
+                hint: context.l10n.t('quizTitleHint'),
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+                    (v == null || v.trim().isEmpty)
+                        ? context.l10n.t('titleRequired')
+                        : null,
               ),
               const SizedBox(height: 12),
 
               DarkField(
                 controller: _descCtrl,
-                label: 'Description (optional)',
-                hint: 'A short description of this quiz',
+                label: context.l10n.t('descriptionOptional'),
+                hint: context.l10n.t('quizDescriptionHint'),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
@@ -275,7 +293,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    'Public Quiz',
+                    context.l10n.t('publicQuiz'),
                     style: GoogleFonts.nunito(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -283,8 +301,8 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                   ),
                   subtitle: Text(
                     _isPublic
-                        ? 'Visible to everyone'
-                        : 'Only visible to you',
+                        ? context.l10n.t('visibleToEveryone')
+                        : context.l10n.t('visibleOnlyToYou'),
                     style: GoogleFonts.nunito(
                       color: Colors.white54,
                       fontSize: 12,
@@ -301,7 +319,10 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               Row(
                 children: [
                   Text(
-                    'Questions (${_questions.length})',
+                    context.l10n.t(
+                      'questionCountLabel',
+                      params: {'count': '${_questions.length}'},
+                    ),
                     style: GoogleFonts.nunito(
                       color: Colors.white,
                       fontSize: 18,
@@ -336,7 +357,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                 ),
                 icon: const Icon(Icons.add),
                 label: Text(
-                  'Add Question',
+                  context.l10n.t('addQuestion'),
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -530,7 +551,7 @@ class _QuestionDraftCardState extends State<_QuestionDraftCard> {
               fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
-              labelText: 'Question text',
+              labelText: context.l10n.t('questionText'),
               filled: true,
               fillColor: const Color(0xFFF5F0FF),
               border: OutlineInputBorder(
@@ -550,7 +571,10 @@ class _QuestionDraftCardState extends State<_QuestionDraftCard> {
                   size: 16, color: Color(0xFF46178F)),
               const SizedBox(width: 8),
               Text(
-                'Time: ${widget.draft.timeLimit}s',
+                context.l10n.t(
+                  'timeSeconds',
+                  params: {'seconds': '${widget.draft.timeLimit}'},
+                ),
                 style: GoogleFonts.nunito(
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1A1A2E),
@@ -587,8 +611,8 @@ class _QuestionDraftCardState extends State<_QuestionDraftCard> {
                         size: 16, color: Color(0xFF46178F)),
                 label: Text(
                   widget.draft.imageFile != null
-                      ? 'Change image ✓'
-                      : 'Add image',
+                      ? '${context.l10n.t('changeImage')} ✓'
+                      : context.l10n.t('addImage'),
                   style: GoogleFonts.nunito(
                     color: const Color(0xFF46178F),
                     fontSize: 12,
@@ -604,7 +628,7 @@ class _QuestionDraftCardState extends State<_QuestionDraftCard> {
 
           const SizedBox(height: 8),
           Text(
-            'Answers (tap ✓ to mark correct)',
+            context.l10n.t('answersTapToMarkCorrect'),
             style: GoogleFonts.nunito(
               fontWeight: FontWeight.w700,
               fontSize: 12,
@@ -659,7 +683,10 @@ class _QuestionDraftCardState extends State<_QuestionDraftCard> {
                                     color: const Color(0xFF1A1A2E),
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: 'Answer ${idx + 1}',
+                                    hintText: context.l10n.t(
+                                      'answerHint',
+                                      params: {'index': '${idx + 1}'},
+                                    ),
                                     hintStyle: TextStyle(
                                       fontSize: 11,
                                       color: Colors.grey[400],

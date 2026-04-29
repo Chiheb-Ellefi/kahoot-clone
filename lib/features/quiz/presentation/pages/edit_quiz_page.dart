@@ -9,6 +9,7 @@ import '../../data/models/quiz_model.dart';
 import '../../data/models/question_model.dart';
 import '../../data/models/answer_model.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/supabase_storage.dart';
 import 'create_quiz_page.dart' show DarkField;
 
@@ -87,7 +88,11 @@ class _EditQuizPageState extends State<EditQuizPage> {
       setState(() => _isUploadingCover = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
+          SnackBar(
+            content: Text(
+              context.l10n.t('uploadFailed', params: {'error': '$e'}),
+            ),
+          ),
         );
       }
     }
@@ -98,7 +103,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
     if (!_formKey.currentState!.validate()) return;
     if (_questions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one question.')),
+        SnackBar(content: Text(context.l10n.t('addAtLeastOneQuestion'))),
       );
       return;
     }
@@ -107,7 +112,14 @@ class _EditQuizPageState extends State<EditQuizPage> {
       final q = _questions[i];
       if (q.textCtrl.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Question ${i + 1} has no text.')),
+          SnackBar(
+            content: Text(
+              context.l10n.t(
+                'questionHasNoText',
+                params: {'index': '${i + 1}'},
+              ),
+            ),
+          ),
         );
         return;
       }
@@ -115,7 +127,11 @@ class _EditQuizPageState extends State<EditQuizPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Question ${i + 1} needs at least one correct answer.'),
+              context.l10n.t(
+                'questionNeedsCorrectAnswer',
+                params: {'index': '${i + 1}'},
+              ),
+            ),
           ),
         );
         return;
@@ -149,8 +165,8 @@ class _EditQuizPageState extends State<EditQuizPage> {
       listener: (context, state) {
         if (state is QuizSaved) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Quiz updated! ✅'),
+            SnackBar(
+              content: Text(context.l10n.t('quizUpdated')),
               backgroundColor: Color(0xFF26890C),
             ),
           );
@@ -181,7 +197,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
           backgroundColor: const Color(0xFF46178F),
           iconTheme: const IconThemeData(color: Colors.white),
           title: Text(
-            'Edit Quiz',
+            context.l10n.t('editQuiz'),
             style: GoogleFonts.nunito(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -202,7 +218,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
                         ),
                       )
                     : Text(
-                        'Save',
+                        context.l10n.t('save'),
                         style: GoogleFonts.nunito(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
@@ -253,7 +269,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
                                   ),
                             if (!_isUploadingCover)
                               Text(
-                                'Add Cover Image',
+                                context.l10n.t('addCoverImage'),
                                 style: GoogleFonts.nunito(
                                   color: Colors.white54,
                                   fontWeight: FontWeight.w600,
@@ -283,18 +299,18 @@ class _EditQuizPageState extends State<EditQuizPage> {
 
               DarkField(
                 controller: _titleCtrl,
-                label: 'Quiz Title',
-                hint: 'e.g. World Geography',
+                label: context.l10n.t('quizTitle'),
+                hint: context.l10n.t('quizTitleHint'),
                 validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Title is required'
+                    ? context.l10n.t('titleRequired')
                     : null,
               ),
               const SizedBox(height: 12),
 
               DarkField(
                 controller: _descCtrl,
-                label: 'Description (optional)',
-                hint: 'A short description',
+                label: context.l10n.t('descriptionOptional'),
+                hint: context.l10n.t('quizDescriptionHint'),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
@@ -309,7 +325,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    'Public Quiz',
+                    context.l10n.t('publicQuiz'),
                     style: GoogleFonts.nunito(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -323,7 +339,10 @@ class _EditQuizPageState extends State<EditQuizPage> {
               const SizedBox(height: 24),
 
               Text(
-                'Questions (${_questions.length})',
+                context.l10n.t(
+                  'questionCountLabel',
+                  params: {'count': '${_questions.length}'},
+                ),
                 style: GoogleFonts.nunito(
                   color: Colors.white,
                   fontSize: 18,
@@ -372,7 +391,7 @@ class _EditQuizPageState extends State<EditQuizPage> {
                 ),
                 icon: const Icon(Icons.add),
                 label: Text(
-                  'Add Question',
+                  context.l10n.t('addQuestion'),
                   style: GoogleFonts.nunito(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -544,7 +563,7 @@ class _EditQuestionCardState extends State<_EditQuestionCard> {
               fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
-              labelText: 'Question text',
+              labelText: context.l10n.t('questionText'),
               filled: true,
               fillColor: const Color(0xFFF5F0FF),
               border: OutlineInputBorder(
@@ -563,7 +582,10 @@ class _EditQuestionCardState extends State<_EditQuestionCard> {
                   size: 16, color: Color(0xFF46178F)),
               const SizedBox(width: 8),
               Text(
-                'Time: ${widget.draft.timeLimit}s',
+                context.l10n.t(
+                  'timeSeconds',
+                  params: {'seconds': '${widget.draft.timeLimit}'},
+                ),
                 style: GoogleFonts.nunito(
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1A1A2E),
@@ -586,7 +608,7 @@ class _EditQuestionCardState extends State<_EditQuestionCard> {
           ),
 
           Text(
-            'Answers (tap ✓ to mark correct)',
+            context.l10n.t('answersTapToMarkCorrect'),
             style: GoogleFonts.nunito(
               fontWeight: FontWeight.w700,
               fontSize: 12,
@@ -640,7 +662,10 @@ class _EditQuestionCardState extends State<_EditQuestionCard> {
                                     color: const Color(0xFF1A1A2E),
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: 'Answer ${idx + 1}',
+                                    hintText: context.l10n.t(
+                                      'answerHint',
+                                      params: {'index': '${idx + 1}'},
+                                    ),
                                     hintStyle: TextStyle(
                                         fontSize: 11,
                                         color: Colors.grey[400]),

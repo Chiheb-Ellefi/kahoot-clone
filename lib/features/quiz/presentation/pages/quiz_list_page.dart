@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../cubit/quiz_cubit.dart';
 import '../cubit/quiz_state.dart';
 import '../../data/models/quiz_model.dart';
@@ -18,7 +19,7 @@ class QuizListPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF46178F),
         title: Text(
-          'All Quizzes',
+          context.l10n.t('allQuizzes'),
           style: GoogleFonts.nunito(
             color: Colors.white,
             fontWeight: FontWeight.w900,
@@ -44,7 +45,7 @@ class QuizListPage extends StatelessWidget {
             if (state.quizzes.isEmpty) {
               return Center(
                 child: Text(
-                  'No quizzes found.',
+                  context.l10n.t('noQuizzesFound'),
                   style: GoogleFonts.nunito(
                     color: Colors.white54,
                     fontSize: 16,
@@ -151,7 +152,10 @@ class _QuizListTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${quiz.questionCount} questions',
+                          context.l10n.t(
+                            'questionsCount',
+                            params: {'count': '${quiz.questionCount}'},
+                          ),
                           style: GoogleFonts.nunito(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -258,7 +262,7 @@ class _CenteredError extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(context.l10n.t('retry')),
             ),
           ],
         ),

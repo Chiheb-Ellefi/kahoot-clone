@@ -9,6 +9,7 @@ import '../../data/models/player_model.dart';
 import '../../data/models/leaderboard_model.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/audio_feedback_service.dart';
 import '../../../../core/utils/dialog_utils.dart';
 import '../../../../core/widgets/responsive_container.dart';
@@ -28,11 +29,12 @@ class _LeaderboardPageState extends State<LeaderboardPage>
   bool _hasShownResult = false;
   Map<String, int> _previousRanks = <String, int>{};
   String? _overtakePulsePlayerId;
+  bool _gameIsFinished = false;
 
   @override
   void initState() {
     super.initState();
-    AudioFeedbackService.instance.playLeaderboardOpen();
+    AudioFeedbackService.instance.consumeLeaderboardSoundIfPending();
     _slideCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -78,11 +80,20 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       if (myRank == 0) {
         AudioFeedbackService.instance.playWin();
         DialogUtils.showSuccess(
-            context, '🎉 Congratulations!', 'You won the game! Amazing performance!');
+          context,
+          '🎉 ${context.l10n.t('congratulations')}',
+          context.l10n.t('youWonTheGame'),
+        );
       } else if (myRank >= 0) {
         AudioFeedbackService.instance.playLose();
-        DialogUtils.showError(context, '😢 Good luck next time!',
-            'You finished at #${myRank + 1}. Keep practicing!');
+        DialogUtils.showError(
+          context,
+          '😢 ${context.l10n.t('goodLuckNextTime')}',
+          context.l10n.t(
+            'youFinishedRank',
+            params: {'rank': '${myRank + 1}'},
+          ),
+        );
       }
     });
   }
@@ -121,6 +132,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
         } else if (state is GameLeaderboardLoaded) {
           _trackOvertakes(state.leaderboard);
         } else if (state is GameFinished) {
+          _gameIsFinished = true;
           _trackOvertakes(state.results);
         }
         if (state is GameAnswerResult) {
@@ -176,7 +188,9 @@ class _LeaderboardPageState extends State<LeaderboardPage>
             backgroundColor: AppColors.primary600,
             automaticallyImplyLeading: false,
             title: Text(
-              isFinal ? '🏆 Final Results' : '⚡ ${AppConstants.gameName}',
+              isFinal
+                  ? '🏆 ${context.l10n.t('finalResults')}'
+                  : '⚡ ${AppConstants.gameName}',
               style: GoogleFonts.nunito(
                   color: AppColors.neutral50, fontWeight: FontWeight.w900),
             ),
@@ -187,7 +201,7 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                     cubit.reset();
                     context.go('/home');
                   },
-                  child: Text('Exit',
+                  child: Text(context.l10n.t('exit'),
                       style: GoogleFonts.nunito(
                           color: AppColors.neutral50,
                           fontWeight: FontWeight.w700)),
@@ -242,12 +256,15 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
-                                child: !isFinal && isHost
+                                child: isFinal
                                     ? SizedBox(
                                         width: double.infinity,
                                         height: 52,
                                         child: ElevatedButton.icon(
-                                          onPressed: () => cubit.goToNextQuestion(),
+                                          onPressed: () {
+                                            cubit.reset();
+                                            context.go('/home');
+                                          },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppColors.primary400,
                                             shape: RoundedRectangleBorder(
@@ -255,10 +272,10 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                                                   BorderRadius.circular(14),
                                             ),
                                           ),
-                                          icon: const Icon(Icons.navigate_next,
+                                          icon: const Icon(Icons.exit_to_app,
                                               color: AppColors.neutral50),
                                           label: Text(
-                                            'Next Question',
+                                            context.l10n.t('exit'),
                                             style: GoogleFonts.nunito(
                                               color: AppColors.neutral50,
                                               fontWeight: FontWeight.w900,
@@ -267,9 +284,65 @@ class _LeaderboardPageState extends State<LeaderboardPage>
                                           ),
                                         ),
                                       )
-                                    : !isFinal
-                                        ? _WaitingPill(isRoundEnd: isRoundEnd)
-                                        : const SizedBox.shrink(),
+                                    : !isFinal && isHost
+                                        ? SizedBox(
+                                            width: double.infinity,
+                                            height: 52,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () =>
+                                                  cubit.goToNextQuestion(),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppColors.primary400,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                ),
+                                              ),
+                                              icon: const Icon(
+                                                  Icons.navigate_next,
+                                                  color: AppColors.neutral50),
+                                              label: Text(
+                                                context.l10n.t('nextQuestion'),
+                                                style: GoogleFonts.nunito(
+                                                  color: AppColors.neutral50,
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 17,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        : !isFinal && !_gameIsFinished
+                                            ? _WaitingPill(isRoundEnd: isRoundEnd)
+                                            : isFinal || _gameIsFinished
+                                                ? SizedBox(
+                                                    width: double.infinity,
+                                                    height: 52,
+                                                    child: ElevatedButton.icon(
+                                                      onPressed: () {
+                                                        cubit.reset();
+                                                        context.go('/home');
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: AppColors.primary400,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(14),
+                                                        ),
+                                                      ),
+                                                      icon: const Icon(Icons.exit_to_app,
+                                                          color: AppColors.neutral50),
+                                                      label: Text(
+                                                        context.l10n.t('exit'),
+                                                        style: GoogleFonts.nunito(
+                                                          color: AppColors.neutral50,
+                                                          fontWeight: FontWeight.w900,
+                                                          fontSize: 17,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                : const SizedBox.shrink(),
                               ),
                             ),
                             const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -311,7 +384,9 @@ class _WaitingPill extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            isRoundEnd ? 'Waiting for host…' : 'Standby…',
+            isRoundEnd
+                ? context.l10n.t('waitingForHost')
+                : context.l10n.t('standby'),
             style: GoogleFonts.nunito(
               color: AppColors.neutral200,
               fontSize: 15,
@@ -617,7 +692,11 @@ class _RankRowState extends State<_RankRow> with SingleTickerProviderStateMixin 
                       ),
                       if (widget.index < 3)
                         Text(
-                          ['🥇 Winner', '🥈 Runner-up', '🥉 3rd Place'][widget.index],
+                          [
+                            '🥇 ${context.l10n.t('winner')}',
+                            '🥈 ${context.l10n.t('runnerUp')}',
+                            '🥉 ${context.l10n.t('thirdPlace')}',
+                          ][widget.index],
                           style: GoogleFonts.nunito(
                             color: rankColor,
                             fontWeight: FontWeight.w600,
@@ -628,7 +707,10 @@ class _RankRowState extends State<_RankRow> with SingleTickerProviderStateMixin 
                   ),
                 ),
                 Text(
-                  '${widget.player.score} pts',
+                  context.l10n.t(
+                    'pointsShort',
+                    params: {'points': '${widget.player.score}'},
+                  ),
                   style: GoogleFonts.nunito(
                     color: rankColor,
                     fontWeight: FontWeight.w900,

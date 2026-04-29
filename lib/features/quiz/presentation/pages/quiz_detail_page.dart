@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../cubit/quiz_cubit.dart';
 import '../cubit/quiz_state.dart';
 import '../../data/models/quiz_model.dart';
@@ -64,7 +65,7 @@ class _QuizDetailView extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: Colors.white),
-              tooltip: 'Edit',
+              tooltip: context.l10n.t('edit'),
               onPressed: () =>
                   context.push('/quizzes/${quiz.id}/edit', extra: quiz),
             ),
@@ -117,13 +118,18 @@ class _QuizDetailView extends StatelessWidget {
                   children: [
                     _StatChip(
                       icon: Icons.help_outline,
-                      label: '${quiz.questionCount} Questions',
+                      label: context.l10n.t(
+                        'questionsCount',
+                        params: {'count': '${quiz.questionCount}'},
+                      ),
                       color: const Color(0xFF1368CE),
                     ),
                     const SizedBox(width: 10),
                     _StatChip(
                       icon: Icons.public,
-                      label: quiz.isPublic ? 'Public' : 'Private',
+                      label: quiz.isPublic
+                          ? context.l10n.t('public')
+                          : context.l10n.t('private'),
                       color: quiz.isPublic
                           ? const Color(0xFF26890C)
                           : Colors.grey,
@@ -162,7 +168,7 @@ class _QuizDetailView extends StatelessWidget {
                     icon: const Icon(Icons.play_circle_outline,
                         color: Colors.white),
                     label: Text(
-                      'Host This Quiz',
+                      context.l10n.t('hostThisQuiz'),
                       style: GoogleFonts.nunito(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
@@ -175,7 +181,7 @@ class _QuizDetailView extends StatelessWidget {
 
                 // ── Questions list ─────────────────────────────────
                 Text(
-                  'Questions',
+                  context.l10n.t('questions'),
                   style: GoogleFonts.nunito(
                     color: Colors.white,
                     fontSize: 18,
@@ -282,7 +288,7 @@ class _QuizDetailView extends StatelessWidget {
                               size: 13, color: Colors.grey[500]),
                           const SizedBox(width: 4),
                           Text(
-                            '${q.timeLimit}s  •  ${q.points} pts',
+                            '${q.timeLimit}s  •  ${context.l10n.t('pointsShort', params: {'points': '${q.points}'})}',
                             style: GoogleFonts.nunito(
                               fontSize: 11,
                               color: Colors.grey[500],

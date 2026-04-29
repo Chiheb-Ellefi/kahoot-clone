@@ -16,6 +16,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/app_settings_service.dart';
 import '../../../../core/widgets/avatar_widget.dart';
+import '../../../../core/widgets/app_logo.dart';
 import '../../../../core/utils/supabase_storage.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -56,7 +57,10 @@ class HomePage extends StatelessWidget {
       elevation: 0,
       title: Row(
         children: [
-          const Icon(Icons.quiz_rounded, color: AppColors.neutral50, size: 28),
+          const AppLogo(
+            size: 28,
+            color: AppColors.neutral50,
+          ),
           const SizedBox(width: 8),
           Text(
             AppConstants.appName,
@@ -206,7 +210,7 @@ class _HomeBody extends StatelessWidget {
               const _MakeDashboard(),
               _QuizGrid(
                 quizzes: state.myQuizzes,
-                emptyMessage: 'You haven\'t created any quizzes yet.',
+                emptyMessage: context.l10n.t('noQuizzesCreatedYet'),
                 showOwnerActions: true,
               ),
             ],
@@ -360,7 +364,10 @@ class _QuizCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${quiz.questionCount} questions',
+                            context.l10n.t(
+                              'questionsCount',
+                              params: {'count': '${quiz.questionCount}'},
+                            ),
                             style: GoogleFonts.nunito(
                               fontSize: 11,
                               color: AppColors.neutral600,
@@ -442,11 +449,14 @@ class _OwnerMenu extends StatelessWidget {
         }
       },
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'host', child: Text('Host Game')),
-        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-        const PopupMenuItem(
+        PopupMenuItem(value: 'host', child: Text(context.l10n.t('hostGame'))),
+        PopupMenuItem(value: 'edit', child: Text(context.l10n.t('edit'))),
+        PopupMenuItem(
           value: 'delete',
-          child: Text('Delete', style: TextStyle(color: AppColors.error400)),
+          child: Text(
+            context.l10n.t('delete'),
+            style: const TextStyle(color: AppColors.error400),
+          ),
         ),
       ],
     );
@@ -456,17 +466,24 @@ class _OwnerMenu extends StatelessWidget {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Quiz'),
-        content: Text('Delete "${quiz.title}"? This cannot be undone.'),
+        title: Text(context.l10n.t('deleteQuizTitle')),
+        content: Text(
+          context.l10n.t(
+            'deleteQuizConfirm',
+            params: {'title': quiz.title},
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.t('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                const Text('Delete', style: TextStyle(color: AppColors.error400)),
+            child: Text(
+              context.l10n.t('delete'),
+              style: const TextStyle(color: AppColors.error400),
+            ),
           ),
         ],
       ),
@@ -499,7 +516,7 @@ class _ErrorView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+              label: Text(context.l10n.t('retry')),
             ),
           ],
         ),
@@ -519,7 +536,7 @@ class _MakeDashboard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Create your own: quick tools to get started',
+            context.l10n.t('homeCreateToolsTitle'),
             style: GoogleFonts.nunito(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -541,7 +558,7 @@ class _MakeDashboard extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _ActionCard(
-                    title: 'Create content from scratch',
+                    title: context.l10n.t('createContentFromScratch'),
                     icon: Icons.add_box_rounded,
                     color: AppColors.error400,
                     onTap: () async {
@@ -552,19 +569,19 @@ class _MakeDashboard extends StatelessWidget {
                     },
                   ),
                   _ActionCard(
-                    title: 'Save time! Create with AI',
+                    title: context.l10n.t('createWithAi'),
                     icon: Icons.auto_awesome,
                     color: AppColors.primary400,
                     onTap: () => _showAiDialog(context),
                   ),
                   _ActionCard(
-                    title: 'Quickly create from study notes',
+                    title: context.l10n.t('createFromStudyNotes'),
                     icon: Icons.picture_as_pdf,
                     color: AppColors.error400,
                     onTap: () => _uploadPdf(context),
                   ),
                   _ActionCard(
-                    title: 'Turn presentations into engaging experiences',
+                    title: context.l10n.t('createFromPresentation'),
                     icon: Icons.slideshow,
                     color:  AppColors.primary400,
                     onTap: () => _uploadPpt(context),
@@ -585,7 +602,7 @@ class _MakeDashboard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.primary800,
         title: Text(
-          'Generate with AI',
+          context.l10n.t('generateWithAi'),
           style: GoogleFonts.nunito(
               color: AppColors.neutral50, fontWeight: FontWeight.bold),
         ),
@@ -593,7 +610,7 @@ class _MakeDashboard extends StatelessWidget {
           controller: ctrl,
           style: const TextStyle(color: AppColors.neutral50),
           decoration: InputDecoration(
-            hintText: 'Enter a topic (e.g. History of Rome)',
+            hintText: context.l10n.t('enterTopicHint'),
             hintStyle: TextStyle(color: AppColors.neutral200.withOpacity(0.7)),
             filled: true,
             fillColor: AppColors.neutral50.withOpacity(0.1),
@@ -606,8 +623,10 @@ class _MakeDashboard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppColors.neutral200)),
+            child: Text(
+              context.l10n.t('cancel'),
+              style: const TextStyle(color: AppColors.neutral200),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -619,8 +638,10 @@ class _MakeDashboard extends StatelessWidget {
                 _generateFromAi(context, prompt);
               }
             },
-            child: const Text('Generate',
-                style: TextStyle(color: AppColors.neutral50)),
+            child: Text(
+              context.l10n.t('generate'),
+              style: const TextStyle(color: AppColors.neutral50),
+            ),
           ),
         ],
       ),
@@ -628,7 +649,7 @@ class _MakeDashboard extends StatelessWidget {
   }
 
   Future<void> _generateFromAi(BuildContext context, String prompt) async {
-    _showLoadingDialog(context, 'Generating quiz with AI...');
+    _showLoadingDialog(context, context.l10n.t('generatingQuizWithAi'));
     try {
       final repo = sl<QuizRepository>();
       final quiz = await repo.generateFromAi(prompt);
@@ -643,7 +664,13 @@ class _MakeDashboard extends StatelessWidget {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+            .showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.l10n.t('errorMessage', params: {'error': '$e'}),
+                ),
+              ),
+            );
       }
     }
   }
@@ -659,12 +686,12 @@ class _MakeDashboard extends StatelessWidget {
     final file = result.files.first;
     if (file.bytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not read file data.')),
+        SnackBar(content: Text(context.l10n.t('couldNotReadFileData'))),
       );
       return;
     }
  
-    _showLoadingDialog(context, 'Uploading PDF...');
+    _showLoadingDialog(context, context.l10n.t('uploadingPdf'));
     try {
       // Upload to Supabase Storage and get the public URL
       final fileUrl = await SupabaseStorageHelper.uploadDocument(file);
@@ -684,7 +711,11 @@ class _MakeDashboard extends StatelessWidget {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(
+              context.l10n.t('errorMessage', params: {'error': '$e'}),
+            ),
+          ),
         );
       }
     }
@@ -702,12 +733,12 @@ class _MakeDashboard extends StatelessWidget {
     final file = result.files.first;
     if (file.bytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not read file data.')),
+        SnackBar(content: Text(context.l10n.t('couldNotReadFileData'))),
       );
       return;
     }
  
-    _showLoadingDialog(context, 'Uploading Presentation...');
+    _showLoadingDialog(context, context.l10n.t('uploadingPresentation'));
     try {
       // Upload to Supabase Storage and get the public URL
       final fileUrl = await SupabaseStorageHelper.uploadDocument(file);
@@ -727,7 +758,11 @@ class _MakeDashboard extends StatelessWidget {
       if (context.mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(
+              context.l10n.t('errorMessage', params: {'error': '$e'}),
+            ),
+          ),
         );
       }
     }

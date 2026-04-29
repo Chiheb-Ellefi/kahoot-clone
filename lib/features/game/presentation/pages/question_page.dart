@@ -118,13 +118,20 @@ class _QuestionPageState extends State<QuestionPage>
   Widget build(BuildContext context) {
     return BlocConsumer<GameCubit, GameState>(
       listener: (context, state) {
+        final isHost = context.read<GameCubit>().isHost;
         if (state is GameQuestionActive) {
           _applyNewQuestion(state.question);
         } else if (state is GameAnswerResult) {
           _timer?.cancel();
           AudioFeedbackService.instance.stopTimerSound();
-          _navigatedToResult = true;
-          context.push('/game/answer-result', extra: context.read<GameCubit>());
+          if (isHost) {
+            context.read<GameCubit>().loadLeaderboard();
+            context.pushReplacement('/game/leaderboard',
+                extra: context.read<GameCubit>());
+          } else {
+            _navigatedToResult = true;
+            context.push('/game/answer-result', extra: context.read<GameCubit>());
+          }
         } else if (state is GameLeaderboardLoaded) {
           if (!_answered || _navigatedToResult) return;
           context.pushReplacement('/game/leaderboard',
@@ -142,6 +149,7 @@ class _QuestionPageState extends State<QuestionPage>
         }
       },
       builder: (context, state) {
+        final isHost = context.read<GameCubit>().isHost;
         final q =
             _currentQuestion ?? (state is GameQuestionActive ? state.question : null);
         if (q != null && !_timerStarted) {
@@ -210,16 +218,16 @@ class _QuestionPageState extends State<QuestionPage>
                                   delayMs: 180,
                                   child: Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.all(20),
+                                    padding: const EdgeInsets.all(24),
                                     decoration: BoxDecoration(
                                       color: AppColors.neutral50,
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(20),
                                       boxShadow: [
                                         BoxShadow(
                                           color:
-                                              AppColors.neutral800.withOpacity(0.2),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
+                                              AppColors.neutral800.withOpacity(0.16),
+                                          blurRadius: 18,
+                                          offset: const Offset(0, 8),
                                         ),
                                       ],
                                     ),
@@ -244,7 +252,7 @@ class _QuestionPageState extends State<QuestionPage>
                       Expanded(
                         flex: 3,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           child: q.answers.length >= 4
                               ? Column(
                                   children: [
@@ -257,29 +265,39 @@ class _QuestionPageState extends State<QuestionPage>
                                             isLocked: _answered,
                                             isSelected:
                                                 _selectedAnswerId == q.answers[0].id,
+                                            isHost: isHost,
+                                            highlightAsCorrect:
+                                                isHost && q.answers[0].isCorrect,
                                             tiltX: -0.05,
                                             tiltY: -0.08,
                                             delayMs: 260,
-                                            onTap: () => _selectAnswer(
-                                                context, q, q.answers[0]),
+                                            onTap: isHost
+                                                ? null
+                                                : () => _selectAnswer(
+                                                    context, q, q.answers[0]),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 14),
                                           _AnswerButton(
                                             answer: q.answers[1],
                                             shape: Icons.diamond_outlined,
                                             isLocked: _answered,
                                             isSelected:
                                                 _selectedAnswerId == q.answers[1].id,
+                                            isHost: isHost,
+                                            highlightAsCorrect:
+                                                isHost && q.answers[1].isCorrect,
                                             tiltX: -0.05,
                                             tiltY: 0.08,
                                             delayMs: 340,
-                                            onTap: () => _selectAnswer(
-                                                context, q, q.answers[1]),
+                                            onTap: isHost
+                                                ? null
+                                                : () => _selectAnswer(
+                                                    context, q, q.answers[1]),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 14),
                                     Expanded(
                                       child: Row(
                                         children: [
@@ -289,24 +307,34 @@ class _QuestionPageState extends State<QuestionPage>
                                             isLocked: _answered,
                                             isSelected:
                                                 _selectedAnswerId == q.answers[2].id,
+                                            isHost: isHost,
+                                            highlightAsCorrect:
+                                                isHost && q.answers[2].isCorrect,
                                             tiltX: 0.05,
                                             tiltY: -0.08,
                                             delayMs: 420,
-                                            onTap: () => _selectAnswer(
-                                                context, q, q.answers[2]),
+                                            onTap: isHost
+                                                ? null
+                                                : () => _selectAnswer(
+                                                    context, q, q.answers[2]),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 14),
                                           _AnswerButton(
                                             answer: q.answers[3],
                                             shape: Icons.square_outlined,
                                             isLocked: _answered,
                                             isSelected:
                                                 _selectedAnswerId == q.answers[3].id,
+                                            isHost: isHost,
+                                            highlightAsCorrect:
+                                                isHost && q.answers[3].isCorrect,
                                             tiltX: 0.05,
                                             tiltY: 0.08,
                                             delayMs: 500,
-                                            onTap: () => _selectAnswer(
-                                                context, q, q.answers[3]),
+                                            onTap: isHost
+                                                ? null
+                                                : () => _selectAnswer(
+                                                    context, q, q.answers[3]),
                                           ),
                                         ],
                                       ),
@@ -365,8 +393,8 @@ class _CountdownCircle extends StatelessWidget {
             : const [],
       ),
       child: SizedBox(
-        width: 80,
-        height: 80,
+        width: 90,
+        height: 90,
         child: AnimatedBuilder(
           animation: animation,
           builder: (_, __) {
@@ -435,7 +463,9 @@ class _AnswerButton extends StatefulWidget {
   final double tiltX;
   final double tiltY;
   final int delayMs;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isHost;
+  final bool highlightAsCorrect;
   const _AnswerButton({
     required this.answer,
     required this.shape,
@@ -444,6 +474,8 @@ class _AnswerButton extends StatefulWidget {
     required this.tiltX,
     required this.tiltY,
     required this.delayMs,
+    required this.isHost,
+    required this.highlightAsCorrect,
     required this.onTap,
   });
 
@@ -467,7 +499,7 @@ class _AnswerButtonState extends State<_AnswerButton>
     )..addListener(() {
         if (!_didInvokeTap && _flipCtrl.value > 0.52) {
           _didInvokeTap = true;
-          widget.onTap();
+          widget.onTap?.call();
         }
       });
     _entryCtrl = AnimationController(
@@ -514,7 +546,7 @@ class _AnswerButtonState extends State<_AnswerButton>
             child: Opacity(
               opacity: entry.clamp(0.0, 1.0),
               child: GestureDetector(
-                onTap: widget.isLocked
+                onTap: widget.isLocked || widget.onTap == null
                     ? null
                     : () {
                         if (!_flipCtrl.isAnimating && !widget.isSelected) {
@@ -524,7 +556,9 @@ class _AnswerButtonState extends State<_AnswerButton>
                       },
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
-                  opacity: widget.isLocked && !widget.isSelected ? 0.55 : 1.0,
+                  opacity: widget.isHost
+                      ? 1.0
+                      : (widget.isLocked && !widget.isSelected ? 0.55 : 1.0),
                   child: Transform(
                     alignment: Alignment.center,
                     transform: Matrix4.identity()
@@ -535,37 +569,96 @@ class _AnswerButtonState extends State<_AnswerButton>
                     child: Container(
                       decoration: BoxDecoration(
                         color: _bg,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: widget.highlightAsCorrect
+                            ? Border.all(
+                                color: Colors.greenAccent,
+                                width: 3,
+                              )
+                            : null,
                         boxShadow: [
                           BoxShadow(
-                            color: _bg.withOpacity(0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
+                            color: _bg.withOpacity(0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
                           ),
+                          if (widget.highlightAsCorrect)
+                            BoxShadow(
+                              color: Colors.greenAccent.withOpacity(0.35),
+                              blurRadius: 16,
+                              spreadRadius: 1,
+                            ),
                         ],
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            Icon(widget.shape, color: AppColors.neutral50, size: 22),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                widget.isSelected && _flipCtrl.value > 0.5
-                                    ? 'Locked'
-                                    : widget.answer.text,
-                                style: GoogleFonts.nunito(
-                                  color: AppColors.neutral50,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
+                      child: Stack(
+                        children: [
+                          if (widget.highlightAsCorrect)
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Colors.greenAccent.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 20,
+                              horizontal: 16,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  child: Icon(
+                                    widget.shape,
+                                    color: AppColors.neutral50,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    widget.isSelected && _flipCtrl.value > 0.5
+                                        ? 'Locked'
+                                        : widget.answer.text,
+                                    style: GoogleFonts.nunito(
+                                      color: AppColors.neutral50,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (widget.highlightAsCorrect)
+                            Positioned(
+                              right: 10,
+                              bottom: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F8F53),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '✓ Correct Answer',
+                                  style: GoogleFonts.nunito(
+                                    color: AppColors.neutral50,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
