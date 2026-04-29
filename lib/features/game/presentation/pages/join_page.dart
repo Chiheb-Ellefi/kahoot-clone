@@ -152,13 +152,29 @@ class _JoinPageState extends State<JoinPage> {
           leadingWidth: showBack ? null : 0,
           actions: [
             if (!isAvatarPage && !isAuthenticated)
-              TextButton(
-                onPressed: () => context.push('/login'),
-                child: Text(
-                  'Host / Login',
-                  style: GoogleFonts.nunito(
-                    color: AppColors.neutral50,
-                    fontWeight: FontWeight.bold,
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () => context.push('/login'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary600,
+                      foregroundColor: AppColors.neutral50,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: AppColors.primary400, width: 2),
+                      ),
+                    ),
+                    icon: const Icon(Icons.admin_panel_settings_rounded, size: 20),
+                    label: Text(
+                      'Host / Login',
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
                 ),
               ),

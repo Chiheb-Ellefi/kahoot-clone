@@ -65,9 +65,11 @@ class _LeaderboardPageState extends State<LeaderboardPage>
       if (!mounted) return;
       final myRank = lb!.players.indexWhere((p) => p.id == cubit.playerId);
       if (myRank == 0) {
+        AudioFeedbackService.instance.playWin();
         DialogUtils.showSuccess(context, '🎉 Congratulations!',
             'You won the game! Amazing performance!');
       } else if (myRank >= 0) {
+        AudioFeedbackService.instance.playLose();
         DialogUtils.showError(context, '😢 Good luck next time!',
             'You finished at #${myRank + 1}. Keep practicing!');
       }

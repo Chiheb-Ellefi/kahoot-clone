@@ -20,23 +20,21 @@ class AudioFeedbackService {
     });
   }
 
-  Future<void> playTimerTick() async {
-    // Reuse one player for reliable short SFX playback on web.
-    final now = DateTime.now();
-    if (_lastTimerTickAt != null &&
-        now.difference(_lastTimerTickAt!) < const Duration(milliseconds: 800)) {
-      return;
-    }
-    _lastTimerTickAt = now;
+  Future<void> startTimerSound() async {
     _timerTickPlayer ??= AudioPlayer();
     try {
-      await _timerTickPlayer!.setReleaseMode(ReleaseMode.stop);
+      await _timerTickPlayer!.setReleaseMode(ReleaseMode.loop);
       await _timerTickPlayer!.setVolume(0.45);
-      await _timerTickPlayer!.stop();
       await _timerTickPlayer!.play(AssetSource('sounds/timer_tick.mp3'));
     } catch (_) {
       // Keep game flow resilient even if browser blocks playback.
     }
+  }
+
+  Future<void> stopTimerSound() async {
+    try {
+      await _timerTickPlayer?.stop();
+    } catch (_) {}
   }
 
   Future<void> playOvertake() => _playAsset('leaderboard.mp3', volume: 0.4);

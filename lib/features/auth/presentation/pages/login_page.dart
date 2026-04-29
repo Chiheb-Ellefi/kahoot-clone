@@ -87,8 +87,10 @@ class _LoginPageState extends State<LoginPage>
                   opacity: _fadeAnim,
                   child: SlideTransition(
                     position: _slideAnim,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                       children: [
                         // ── Logo ──────────────────────────────────────
                         const QuizBlitzLogo(),
@@ -236,10 +238,26 @@ class _LoginPageState extends State<LoginPage>
                             ),
                           ],
                         ),
+                        const SizedBox(height: 24),
+                        
+                        // ── Play anonymously link ──────────────────────────
+                        TextButton.icon(
+                          onPressed: () => context.push('/join'),
+                          icon: const Icon(Icons.videogame_asset_rounded, color: AppColors.neutral50, size: 24),
+                          label: Text(
+                            'Play Anonymously',
+                            style: GoogleFonts.nunito(
+                              color: AppColors.neutral50,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 32),
                       ],
                     ),
                   ),
+                ),
                 ),
               ),
             ),

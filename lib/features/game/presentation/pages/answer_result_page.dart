@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/audio_feedback_service.dart';
 
 /// Shown for EVERY client (players + host) after ALL_PLAYERS_ANSWERED.
 /// Displays correct/wrong feedback + points, then after 5 seconds fetches
@@ -36,6 +37,15 @@ class _AnswerResultPageState extends State<AnswerResultPage>
   // snapshot) from instantly skipping the result screen for the last player.
   bool _readyToNavigate = false;
 
+  void _playSound(bool isCorrect) {
+    if (context.read<GameCubit>().isHost) return;
+    if (isCorrect) {
+      AudioFeedbackService.instance.playCorrectAnswer();
+    } else {
+      AudioFeedbackService.instance.playWrongAnswer();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +67,7 @@ class _AnswerResultPageState extends State<AnswerResultPage>
           _isCorrect = state.isCorrect;
           _pointsEarned = state.pointsEarned;
         });
+        _playSound(state.isCorrect);
       }
       _startCountdown();
     });
@@ -98,6 +109,7 @@ class _AnswerResultPageState extends State<AnswerResultPage>
             _isCorrect = state.isCorrect;
             _pointsEarned = state.pointsEarned;
           });
+          _playSound(state.isCorrect);
         }
 
         // After 5s the cubit calls loadLeaderboard() → GameLeaderboardLoaded.

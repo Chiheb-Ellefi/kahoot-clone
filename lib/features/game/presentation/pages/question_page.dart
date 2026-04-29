@@ -47,6 +47,7 @@ class _QuestionPageState extends State<QuestionPage>
   @override
   void dispose() {
     _timer?.cancel();
+    AudioFeedbackService.instance.stopTimerSound();
     _countdownCtrl.dispose();
     super.dispose();
   }
@@ -59,6 +60,8 @@ class _QuestionPageState extends State<QuestionPage>
     _countdownCtrl.duration = Duration(seconds: seconds);
     _countdownCtrl.forward(from: 0);
 
+    AudioFeedbackService.instance.startTimerSound();
+
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
       if (_endTime == null) return;
@@ -67,14 +70,12 @@ class _QuestionPageState extends State<QuestionPage>
       final diff = _endTime!.difference(now).inSeconds;
 
       if (diff != _remaining) {
-        if (diff > 0 && diff <= 5) {
-          AudioFeedbackService.instance.playTimerTick();
-        }
         setState(() => _remaining = diff >= 0 ? diff : 0);
       }
 
       if (_remaining <= 0) {
         _timer?.cancel();
+        AudioFeedbackService.instance.stopTimerSound();
       }
     });
   }
@@ -83,6 +84,7 @@ class _QuestionPageState extends State<QuestionPage>
     if (_answered) return;
     setState(() => _answered = true);
     _timer?.cancel(); // Stop timer immediately on answer
+    AudioFeedbackService.instance.stopTimerSound();
     final timeTaken = q.timeLimit - _remaining;
     context.read<GameCubit>().submitAnswer(
           questionId: q.id,
@@ -116,6 +118,7 @@ class _QuestionPageState extends State<QuestionPage>
           // ALL players answered (or timer expired) — everyone goes to result page.
           // This fires for BOTH players AND the host.
           _timer?.cancel();
+          AudioFeedbackService.instance.stopTimerSound();
           _navigatedToResult = true; // Block stale GameLeaderboardLoaded for last player
           context.push('/game/answer-result', extra: context.read<GameCubit>());
         } else if (state is GameLeaderboardLoaded) {
