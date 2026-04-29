@@ -3,7 +3,7 @@ class ApiConstants {
   ApiConstants._();
 
   // Base URL for the Spring Boot backend
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'http://192.168.1.12:8080';
 
   // ─── Auth ────────────────────────────────────────────────────────────────
   static const String register = '/api/auth/register';

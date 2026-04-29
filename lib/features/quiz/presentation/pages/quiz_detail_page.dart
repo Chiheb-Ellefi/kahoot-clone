@@ -116,23 +116,27 @@ class _QuizDetailView extends StatelessWidget {
                 // Stats row
                 Row(
                   children: [
-                    _StatChip(
-                      icon: Icons.help_outline,
-                      label: context.l10n.t(
-                        'questionsCount',
-                        params: {'count': '${quiz.questionCount}'},
+                    Flexible(
+                      child: _StatChip(
+                        icon: Icons.help_outline,
+                        label: context.l10n.t(
+                          'questionsCount',
+                          params: {'count': '${quiz.questionCount}'},
+                        ),
+                        color: const Color(0xFF1368CE),
                       ),
-                      color: const Color(0xFF1368CE),
                     ),
                     const SizedBox(width: 10),
-                    _StatChip(
-                      icon: Icons.public,
-                      label: quiz.isPublic
-                          ? context.l10n.t('public')
-                          : context.l10n.t('private'),
-                      color: quiz.isPublic
-                          ? const Color(0xFF26890C)
-                          : Colors.grey,
+                    Flexible(
+                      child: _StatChip(
+                        icon: Icons.public,
+                        label: quiz.isPublic
+                            ? context.l10n.t('public')
+                            : context.l10n.t('private'),
+                        color: quiz.isPublic
+                            ? const Color(0xFF26890C)
+                            : Colors.grey,
+                      ),
                     ),
                   ],
                 ),
@@ -248,35 +252,44 @@ class _QuizDetailView extends StatelessWidget {
                         runSpacing: 6,
                         children: q.answers.map((a) {
                           final color = _hexToColor(a.color);
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: a.isCorrect ? color : Colors.transparent,
-                                width: 1.5,
-                              ),
+                          return ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width - 72,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (a.isCorrect)
-                                  Icon(Icons.check_circle,
-                                      size: 13, color: color),
-                                if (a.isCorrect) const SizedBox(width: 4),
-                                Text(
-                                  a.text,
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 12,
-                                    color: const Color(0xFF1A1A2E),
-                                    fontWeight: a.isCorrect
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                  ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: a.isCorrect ? color : Colors.transparent,
+                                  width: 1.5,
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (a.isCorrect)
+                                    Icon(Icons.check_circle,
+                                        size: 13, color: color),
+                                  if (a.isCorrect) const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      a.text,
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 12,
+                                        color: const Color(0xFF1A1A2E),
+                                        fontWeight: a.isCorrect
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                      ),
+                                      softWrap: true,
+                                      overflow: TextOverflow.visible,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         }).toList(),
@@ -341,12 +354,15 @@ class _StatChip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: GoogleFonts.nunito(
-              color: color,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              label,
+              style: GoogleFonts.nunito(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
