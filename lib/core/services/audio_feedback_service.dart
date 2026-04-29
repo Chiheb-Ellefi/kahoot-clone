@@ -12,12 +12,20 @@ class AudioFeedbackService {
     double volume = 0.7,
   }) async {
     final player = AudioPlayer();
-    await player.setReleaseMode(ReleaseMode.stop);
-    await player.setVolume(volume);
-    await player.play(AssetSource('sounds/$fileName'));
-    player.onPlayerComplete.listen((_) {
-      player.dispose();
-    });
+    try {
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setVolume(volume);
+      await player.play(AssetSource('sounds/$fileName'));
+      player.onPlayerComplete.listen((_) {
+        player.dispose();
+      });
+    } catch (_) {
+      // Keep gameplay resilient even if Linux audio backend fails
+      // to decode/load an asset at runtime.
+      try {
+        await player.dispose();
+      } catch (_) {}
+    }
   }
 
   Future<void> startTimerSound() async {

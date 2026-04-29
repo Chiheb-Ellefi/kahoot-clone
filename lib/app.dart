@@ -35,6 +35,29 @@ class QuizzoApp extends StatelessWidget {
   // ─── Auth cubit kept at app level so the redirect guard can react ──────
   final _authCubit = sl<AuthCubit>();
 
+  CustomTransitionPage<void> _gameMotionPage({
+    required GoRouterState state,
+    required Widget child,
+  }) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionDuration: const Duration(milliseconds: 420),
+      reverseTransitionDuration: const Duration(milliseconds: 320),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+        final slide = Tween<Offset>(
+          begin: const Offset(0, 0.12),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+        return FadeTransition(
+          opacity: fade,
+          child: SlideTransition(position: slide, child: child),
+        );
+      },
+    );
+  }
+
   late final GoRouter _router = GoRouter(
     initialLocation: '/',
     refreshListenable: _GoRouterAuthNotifier(_authCubit),
@@ -149,33 +172,42 @@ class QuizzoApp extends StatelessWidget {
       GoRoute(
         path: '/game/question',
         redirect: (context, state) => state.extra == null ? '/home' : null,
-        builder: (_, state) {
+        pageBuilder: (_, state) {
           final gameCubit = state.extra as GameCubit;
-          return BlocProvider.value(
-            value: gameCubit,
-            child: const QuestionPage(),
+          return _gameMotionPage(
+            state: state,
+            child: BlocProvider.value(
+              value: gameCubit,
+              child: const QuestionPage(),
+            ),
           );
         },
       ),
       GoRoute(
         path: '/game/answer-result',
         redirect: (context, state) => state.extra == null ? '/home' : null,
-        builder: (_, state) {
+        pageBuilder: (_, state) {
           final gameCubit = state.extra as GameCubit;
-          return BlocProvider.value(
-            value: gameCubit,
-            child: const AnswerResultPage(),
+          return _gameMotionPage(
+            state: state,
+            child: BlocProvider.value(
+              value: gameCubit,
+              child: const AnswerResultPage(),
+            ),
           );
         },
       ),
       GoRoute(
         path: '/game/leaderboard',
         redirect: (context, state) => state.extra == null ? '/home' : null,
-        builder: (_, state) {
+        pageBuilder: (_, state) {
           final gameCubit = state.extra as GameCubit;
-          return BlocProvider.value(
-            value: gameCubit,
-            child: const LeaderboardPage(),
+          return _gameMotionPage(
+            state: state,
+            child: BlocProvider.value(
+              value: gameCubit,
+              child: const LeaderboardPage(),
+            ),
           );
         },
       ),

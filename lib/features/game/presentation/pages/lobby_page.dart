@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +10,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/responsive_container.dart';
 import '../../../../core/constants/app_constants.dart';
 
-/// Handles both the Host lobby (show PIN + player list) and the
-/// Player lobby (enter PIN + nickname and join).
 class LobbyPage extends StatefulWidget {
-  final String? quizId;  // non-null when hosting
+  final String? quizId;
   final bool isHost;
   final String? pin;
   final String? nickname;
@@ -38,20 +37,15 @@ class _LobbyPageState extends State<LobbyPage> {
   @override
   void initState() {
     super.initState();
-
-    if (widget.pin != null) {
-      _pinCtrl.text = widget.pin!;
-    }
-    if (widget.nickname != null) {
-      _nicknameCtrl.text = widget.nickname!;
-    }
-
-    // If hosting, immediately create the game session
+    if (widget.pin != null) _pinCtrl.text = widget.pin!;
+    if (widget.nickname != null) _nicknameCtrl.text = widget.nickname!;
     if (widget.isHost && widget.quizId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<GameCubit>().createGame(widget.quizId!);
       });
-    } else if (!widget.isHost && widget.pin != null && widget.nickname != null) {
+    } else if (!widget.isHost &&
+        widget.pin != null &&
+        widget.nickname != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<GameCubit>().joinAnonymousGame(
               pin: widget.pin!,
@@ -74,51 +68,31 @@ class _LobbyPageState extends State<LobbyPage> {
     return BlocConsumer<GameCubit, GameState>(
       listener: (context, state) {
         if (state is GameQuestionActive) {
-          // Game started — navigate to the question page passing the cubit
-          context.push(
-            '/game/question',
-            extra: context.read<GameCubit>(),
-          );
+          context.push('/game/question', extra: context.read<GameCubit>());
         } else if (state is GameLeaderboardLoaded) {
-          context.push(
-            '/game/leaderboard',
-            extra: context.read<GameCubit>(),
-          );
+          context.push('/game/leaderboard', extra: context.read<GameCubit>());
         } else if (state is GameError) {
           String msg = state.message;
-          if (msg.toLowerCase().contains('not found') || 
+          if (msg.toLowerCase().contains('not found') ||
               msg.toLowerCase().contains('invalid pin')) {
             msg = 'No game found with this PIN.';
           }
-          // ✅ FIXED: Added missing 'title' parameter
           DialogUtils.showError(
             context,
-            'Error',  // ✅ Added this parameter
+            'Error',
             msg,
             onClose: () {
-              if (!widget.isHost) {
-                context.go('/join');
-              }
+              if (!widget.isHost) context.go('/join');
             },
           );
         }
       },
       builder: (context, state) {
-        if (widget.isHost) {
-          return _HostLobby(state: state);
-        } else {
-          return _PlayerLobby(
-            state: state,
-          );
-        }
+        return widget.isHost ? _HostLobby(state: state) : _PlayerLobby(state: state);
       },
     );
   }
 }
-
-// ────────────────────────────────────────────────────────────────[...]
-// Host Lobby — displays PIN and live player list
-// ────────────────────────────────────────────────────────────────[...]
 
 class _HostLobby extends StatelessWidget {
   final GameState state;
@@ -131,13 +105,10 @@ class _HostLobby extends StatelessWidget {
         : state is GameSessionUpdated
             ? (state as GameSessionUpdated).session.gamePin
             : '------';
-
     final players = state is GameSessionUpdated
         ? (state as GameSessionUpdated).session.players
         : [];
-
-    final isLoading =
-        state is GameLoading || state is GameInitial;
+    final isLoading = state is GameLoading || state is GameInitial;
 
     return Scaffold(
       backgroundColor: AppColors.primary600,
@@ -151,7 +122,8 @@ class _HostLobby extends StatelessWidget {
             context.go('/home');
           },
         ),
-        title: Text('${AppConstants.gameName} — Lobby',
+        title: Text(
+          '${AppConstants.gameName} — Lobby',
           style: GoogleFonts.nunito(
             color: AppColors.neutral50,
             fontWeight: FontWeight.w900,
@@ -159,164 +131,167 @@ class _HostLobby extends StatelessWidget {
         ),
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.neutral50),
-            )
+          ? const Center(child: CircularProgressIndicator(color: AppColors.neutral50))
           : ResponsiveContainer(
               maxWidth: 600,
               child: Column(
-              children: [
-                const SizedBox(height: 24),
-
-                // ── PIN display ──────────────────────────────────────────
-                Text(
-                  'Game PIN',
-                  style: GoogleFonts.nunito(
-                    color: AppColors.neutral200.withOpacity(0.8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral50,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.neutral800.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                children: [
+                  const SizedBox(height: 24),
+                  _StaggerSlideIn(
+                    delayMs: 0,
+                    child: Text(
+                      'Game PIN',
+                      style: GoogleFonts.nunito(
+                        color: AppColors.neutral200.withOpacity(0.8),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    pin,
-                    style: GoogleFonts.nunito(
-                      fontSize: 52,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary800,
-                      letterSpacing: 8,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Share this PIN with players',
-                  style: GoogleFonts.nunito(
-                    color: AppColors.neutral200.withOpacity(0.7),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // ── Player list ──────────────────────────────────────────
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.neutral50.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: players.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const _PulsingDot(),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Waiting for players…',
-                                  style: GoogleFonts.nunito(
-                                    color: AppColors.neutral200,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${players.length} player${players.length == 1 ? '' : 's'} joined',
-                                style: GoogleFonts.nunito(
-                                  color: AppColors.neutral200,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Expanded(
-                                child: Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: players
-                                      .map((p) => _PlayerChip(
-                                            nickname: p.nickname,
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            ],
+                  const SizedBox(height: 8),
+                  _StaggerSlideIn(
+                    delayMs: 100,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.neutral50,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.neutral800.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
                           ),
-                  ),
-                ),
-
-                // ── Start game button ────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: state is GameLoading
-                          ? null
-                          : () => context.read<GameCubit>().startGame(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success400,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        ],
                       ),
                       child: Text(
-                        'Start Game!',
+                        pin,
                         style: GoogleFonts.nunito(
-                          fontSize: 20,
+                          fontSize: 52,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.neutral50,
+                          color: AppColors.primary800,
+                          letterSpacing: 8,
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  _StaggerSlideIn(
+                    delayMs: 200,
+                    child: Text(
+                      'Share this PIN with players',
+                      style: GoogleFonts.nunito(
+                        color: AppColors.neutral200.withOpacity(0.7),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Expanded(
+                    child: _StaggerSlideIn(
+                      delayMs: 300,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.neutral50.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: players.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const _PulsingDot(),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Waiting for players…',
+                                      style: GoogleFonts.nunito(
+                                        color: AppColors.neutral200,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${players.length} player${players.length == 1 ? '' : 's'} joined',
+                                    style: GoogleFonts.nunito(
+                                      color: AppColors.neutral200,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Expanded(
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: players
+                                          .asMap()
+                                          .entries
+                                          .map((entry) => _StaggerSlideIn(
+                                                delayMs: (380 + (entry.key * 90))
+                                                    .toInt(),
+                                                child: _PlayerChip(
+                                                  nickname: entry.value.nickname,
+                                                ),
+                                              ))
+                                          .toList(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _StaggerSlideIn(
+                      delayMs: 420,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: state is GameLoading
+                              ? null
+                              : () => context.read<GameCubit>().startGame(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success400,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            'Start Game!',
+                            style: GoogleFonts.nunito(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.neutral50,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
     );
   }
 }
 
-// ────────────────────────────────────────────────────────────────[...]
-// Player Lobby — enter PIN + nickname to join
-// ────────────────────────────────────────────────────────────────[...]
-
 class _PlayerLobby extends StatelessWidget {
   final GameState state;
-
-  const _PlayerLobby({
-    required this.state,
-  });
+  const _PlayerLobby({required this.state});
 
   @override
   Widget build(BuildContext context) {
     final hasJoined = state is GameJoined || state is GameSessionUpdated;
-    final isLoading = state is GameLoading;
-
     return Scaffold(
       backgroundColor: AppColors.primary600,
       appBar: AppBar(
@@ -337,7 +312,7 @@ class _PlayerLobby extends StatelessWidget {
       body: ResponsiveContainer(
         maxWidth: 600,
         child: hasJoined
-            ? _WaitingForHost()
+            ? const _WaitingForHost()
             : const Center(child: CircularProgressIndicator(color: AppColors.neutral50)),
       ),
     );
@@ -345,28 +320,36 @@ class _PlayerLobby extends StatelessWidget {
 }
 
 class _WaitingForHost extends StatelessWidget {
+  const _WaitingForHost();
+
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _PulsingDot(size: 60),
+          const _StaggerSlideIn(delayMs: 0, child: _PulsingDot(size: 60)),
           const SizedBox(height: 24),
-          Text(
-            'You\'re in!',
-            style: GoogleFonts.nunito(
-              color: AppColors.neutral50,
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
+          _StaggerSlideIn(
+            delayMs: 100,
+            child: Text(
+              'You\'re in!',
+              style: GoogleFonts.nunito(
+                color: AppColors.neutral50,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Waiting for the host to start…',
-            style: GoogleFonts.nunito(
-              color: AppColors.neutral200,
-              fontSize: 16,
+          _StaggerSlideIn(
+            delayMs: 200,
+            child: Text(
+              'Waiting for the host to start…',
+              style: GoogleFonts.nunito(
+                color: AppColors.neutral200,
+                fontSize: 16,
+              ),
             ),
           ),
         ],
@@ -375,20 +358,16 @@ class _WaitingForHost extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────────[...]
-// Shared small widgets
-// ────────────────────────────────────────────────────────────────[...]
-
 class _PlayerChip extends StatelessWidget {
   final String nickname;
   const _PlayerChip({required this.nickname});
 
   static const _colors = [
-  AppColors.primary400,
-  AppColors.error400,
-  AppColors.success400,
-  AppColors.accent400,
-];
+    AppColors.primary400,
+    AppColors.error400,
+    AppColors.success400,
+    AppColors.accent400,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +390,6 @@ class _PlayerChip extends StatelessWidget {
   }
 }
 
-/// Animated pulsing dot that indicates a "waiting" state.
 class _PulsingDot extends StatefulWidget {
   final double size;
   const _PulsingDot({this.size = 24});
@@ -462,6 +440,55 @@ class _PulsingDotState extends State<_PulsingDot>
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StaggerSlideIn extends StatefulWidget {
+  final Widget child;
+  final int delayMs;
+  const _StaggerSlideIn({required this.child, required this.delayMs});
+
+  @override
+  State<_StaggerSlideIn> createState() => _StaggerSlideInState();
+}
+
+class _StaggerSlideInState extends State<_StaggerSlideIn>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _curve;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    );
+    _curve = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+    Future<void>.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (_, child) {
+        final v = _curve.value;
+        return Transform.translate(
+          offset: Offset(0, lerpDouble(30, 0, v) ?? 0),
+          child: Opacity(opacity: v.clamp(0.0, 1.0), child: child),
+        );
+      },
+      child: widget.child,
     );
   }
 }

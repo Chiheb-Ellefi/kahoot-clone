@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -13,8 +14,6 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/audio_feedback_service.dart';
 import '../../../../core/widgets/responsive_container.dart';
 
-/// Displays the current active question with a countdown timer and
-/// 4 Kahoot-style answer buttons.
 class QuestionPage extends StatefulWidget {
   const QuestionPage({super.key});
 
@@ -28,20 +27,22 @@ class _QuestionPageState extends State<QuestionPage>
   int _remaining = 30;
   bool _answered = false;
   bool _timerStarted = false;
+  bool _timerPulse = false;
+  String? _selectedAnswerId;
   QuestionModel? _currentQuestion;
   DateTime? _endTime;
-
-  // Guard: once we've pushed to answer-result, ignore any stale
-  // GameLeaderboardLoaded emitted by submitAnswer() for the last player.
   bool _navigatedToResult = false;
-
-  // Countdown animation controller
   late AnimationController _countdownCtrl;
+  late AnimationController _bgFloatCtrl;
 
   @override
   void initState() {
     super.initState();
     _countdownCtrl = AnimationController(vsync: this);
+    _bgFloatCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3400),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -49,6 +50,7 @@ class _QuestionPageState extends State<QuestionPage>
     _timer?.cancel();
     AudioFeedbackService.instance.stopTimerSound();
     _countdownCtrl.dispose();
+    _bgFloatCtrl.dispose();
     super.dispose();
   }
 
@@ -56,23 +58,24 @@ class _QuestionPageState extends State<QuestionPage>
     _timer?.cancel();
     _remaining = seconds;
     _endTime = DateTime.now().add(Duration(seconds: seconds));
-
     _countdownCtrl.duration = Duration(seconds: seconds);
     _countdownCtrl.forward(from: 0);
-
     AudioFeedbackService.instance.startTimerSound();
 
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (!mounted) return;
-      if (_endTime == null) return;
-
-      final now = DateTime.now();
-      final diff = _endTime!.difference(now).inSeconds;
-
+      if (!mounted || _endTime == null) return;
+      final diff = _endTime!.difference(DateTime.now()).inSeconds;
       if (diff != _remaining) {
-        setState(() => _remaining = diff >= 0 ? diff : 0);
+        final next = diff >= 0 ? diff : 0;
+        setState(() {
+          _remaining = next;
+          if (_remaining <= 5 && _remaining > 0) {
+            _timerPulse = !_timerPulse;
+          } else if (_remaining > 5) {
+            _timerPulse = false;
+          }
+        });
       }
-
       if (_remaining <= 0) {
         _timer?.cancel();
         AudioFeedbackService.instance.stopTimerSound();
@@ -82,22 +85,26 @@ class _QuestionPageState extends State<QuestionPage>
 
   void _selectAnswer(BuildContext context, QuestionModel q, AnswerModel a) {
     if (_answered) return;
-    setState(() => _answered = true);
-    _timer?.cancel(); // Stop timer immediately on answer
+    setState(() {
+      _answered = true;
+      _selectedAnswerId = a.id;
+    });
+    _timer?.cancel();
     AudioFeedbackService.instance.stopTimerSound();
-    final timeTaken = q.timeLimit - _remaining;
     context.read<GameCubit>().submitAnswer(
           questionId: q.id,
           answerId: a.id,
-          timeTaken: timeTaken,
+          timeTaken: q.timeLimit - _remaining,
         );
   }
 
   void _applyNewQuestion(QuestionModel q) {
     setState(() {
       _answered = false;
+      _selectedAnswerId = null;
       _navigatedToResult = false;
       _timerStarted = true;
+      _timerPulse = false;
       _currentQuestion = null;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -112,27 +119,19 @@ class _QuestionPageState extends State<QuestionPage>
     return BlocConsumer<GameCubit, GameState>(
       listener: (context, state) {
         if (state is GameQuestionActive) {
-          // New question arrived (e.g. host pressed Next Question)
           _applyNewQuestion(state.question);
         } else if (state is GameAnswerResult) {
-          // ALL players answered (or timer expired) — everyone goes to result page.
-          // This fires for BOTH players AND the host.
           _timer?.cancel();
           AudioFeedbackService.instance.stopTimerSound();
-          _navigatedToResult = true; // Block stale GameLeaderboardLoaded for last player
+          _navigatedToResult = true;
           context.push('/game/answer-result', extra: context.read<GameCubit>());
         } else if (state is GameLeaderboardLoaded) {
-          // A player submitted their answer → navigate to leaderboard in waiting mode.
-          // The host never calls submitAnswer so this never fires for the host.
-          // Guard 1: only navigate if we actually answered.
-          // Guard 2: skip if we already navigated to answer-result (last player case).
           if (!_answered || _navigatedToResult) return;
-          context.pushReplacement(
-            '/game/leaderboard',
-            extra: context.read<GameCubit>(),
-          );
+          context.pushReplacement('/game/leaderboard',
+              extra: context.read<GameCubit>());
         } else if (state is GameFinished) {
-          context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
+          context.pushReplacement('/game/leaderboard',
+              extra: context.read<GameCubit>());
         } else if (state is GameError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -143,11 +142,8 @@ class _QuestionPageState extends State<QuestionPage>
         }
       },
       builder: (context, state) {
-        final q = _currentQuestion ??
-            (state is GameQuestionActive ? state.question : null);
-
-        // Fallback: start timer if the listener never handled it
-        // (e.g. the page was rebuilt from scratch with an existing state).
+        final q =
+            _currentQuestion ?? (state is GameQuestionActive ? state.question : null);
         if (q != null && !_timerStarted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !_timerStarted) {
@@ -172,130 +168,158 @@ class _QuestionPageState extends State<QuestionPage>
         return Scaffold(
           backgroundColor: AppColors.primary800,
           body: SafeArea(
-            child: ResponsiveContainer(
-              maxWidth: 800,
-              child: Column(
-                children: [
-                  // ── Timer + question card ────────────────────────────
-                  Expanded(
-                    flex: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // Countdown circle
-                          _CountdownCircle(
-                            remaining: _remaining,
-                            total: q.timeLimit,
-                            animation: _countdownCtrl,
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Optional question image
-                          if (q.imageUrl != null)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: CachedNetworkImage(
-                                imageUrl: q.imageUrl!,
-                                height: 120,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          if (q.imageUrl != null) const SizedBox(height: 12),
-
-                          // Question text
-                          Expanded(
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: AppColors.neutral50,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.neutral800.withOpacity(0.2),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  q.text,
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppColors.primary800,
-                                  ),
-                                  textAlign: TextAlign.center,
+            child: Stack(
+              children: [
+                _FloatingParallaxBackground(animation: _bgFloatCtrl),
+                ResponsiveContainer(
+                  maxWidth: 800,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              _StaggerSlideIn(
+                                delayMs: 0,
+                                child: _CountdownCircle(
+                                  remaining: _remaining,
+                                  total: q.timeLimit,
+                                  animation: _countdownCtrl,
+                                  pulseOn: _timerPulse && _remaining <= 5,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              if (q.imageUrl != null)
+                                _StaggerSlideIn(
+                                  delayMs: 100,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: CachedNetworkImage(
+                                      imageUrl: q.imageUrl!,
+                                      height: 120,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              if (q.imageUrl != null) const SizedBox(height: 12),
+                              Expanded(
+                                child: _StaggerSlideIn(
+                                  delayMs: 180,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.neutral50,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              AppColors.neutral800.withOpacity(0.2),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        q.text,
+                                        style: GoogleFonts.nunito(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.primary800,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          child: q.answers.length >= 4
+                              ? Column(
+                                  children: [
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          _AnswerButton(
+                                            answer: q.answers[0],
+                                            shape: Icons.change_history,
+                                            isLocked: _answered,
+                                            isSelected:
+                                                _selectedAnswerId == q.answers[0].id,
+                                            tiltX: -0.05,
+                                            tiltY: -0.08,
+                                            delayMs: 260,
+                                            onTap: () => _selectAnswer(
+                                                context, q, q.answers[0]),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _AnswerButton(
+                                            answer: q.answers[1],
+                                            shape: Icons.diamond_outlined,
+                                            isLocked: _answered,
+                                            isSelected:
+                                                _selectedAnswerId == q.answers[1].id,
+                                            tiltX: -0.05,
+                                            tiltY: 0.08,
+                                            delayMs: 340,
+                                            onTap: () => _selectAnswer(
+                                                context, q, q.answers[1]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          _AnswerButton(
+                                            answer: q.answers[2],
+                                            shape: Icons.circle_outlined,
+                                            isLocked: _answered,
+                                            isSelected:
+                                                _selectedAnswerId == q.answers[2].id,
+                                            tiltX: 0.05,
+                                            tiltY: -0.08,
+                                            delayMs: 420,
+                                            onTap: () => _selectAnswer(
+                                                context, q, q.answers[2]),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _AnswerButton(
+                                            answer: q.answers[3],
+                                            shape: Icons.square_outlined,
+                                            isLocked: _answered,
+                                            isSelected:
+                                                _selectedAnswerId == q.answers[3].id,
+                                            tiltX: 0.05,
+                                            tiltY: 0.08,
+                                            delayMs: 500,
+                                            onTap: () => _selectAnswer(
+                                                context, q, q.answers[3]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                    ],
                   ),
-
-                  // ── 2×2 answer grid ──────────────────────────────────
-                  Expanded(
-                    flex: 3,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      child: q.answers.length >= 4
-                          ? Column(
-                              children: [
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      _AnswerButton(
-                                        answer: q.answers[0],
-                                        shape: Icons.change_history,
-                                        isLocked: _answered,
-                                        onTap: () =>
-                                            _selectAnswer(context, q, q.answers[0]),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _AnswerButton(
-                                        answer: q.answers[1],
-                                        shape: Icons.diamond_outlined,
-                                        isLocked: _answered,
-                                        onTap: () =>
-                                            _selectAnswer(context, q, q.answers[1]),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      _AnswerButton(
-                                        answer: q.answers[2],
-                                        shape: Icons.circle_outlined,
-                                        isLocked: _answered,
-                                        onTap: () =>
-                                            _selectAnswer(context, q, q.answers[2]),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _AnswerButton(
-                                        answer: q.answers[3],
-                                        shape: Icons.square_outlined,
-                                        isLocked: _answered,
-                                        onTap: () =>
-                                            _selectAnswer(context, q, q.answers[3]),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -304,19 +328,16 @@ class _QuestionPageState extends State<QuestionPage>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Countdown circle with animated arc
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _CountdownCircle extends StatelessWidget {
   final int remaining;
   final int total;
   final Animation<double> animation;
-
+  final bool pulseOn;
   const _CountdownCircle({
     required this.remaining,
     required this.total,
     required this.animation,
+    required this.pulseOn,
   });
 
   Color get _arcColor {
@@ -328,28 +349,44 @@ class _CountdownCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 80,
-      height: 80,
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (_, __) {
-          final progress =
-              total > 0 ? 1.0 - (remaining / total).clamp(0.0, 1.0) : 1.0;
-          return CustomPaint(
-            painter: _ArcPainter(progress: progress, color: _arcColor),
-            child: Center(
-              child: Text(
-                '$remaining',
-                style: GoogleFonts.nunito(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: _arcColor,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: pulseOn
+            ? [
+                BoxShadow(
+                  color: AppColors.error400.withOpacity(0.7),
+                  blurRadius: 20,
+                  spreadRadius: 4,
+                ),
+              ]
+            : const [],
+      ),
+      child: SizedBox(
+        width: 80,
+        height: 80,
+        child: AnimatedBuilder(
+          animation: animation,
+          builder: (_, __) {
+            final progress =
+                total > 0 ? 1.0 - (remaining / total).clamp(0.0, 1.0) : 1.0;
+            return CustomPaint(
+              painter: _ArcPainter(progress: progress, color: _arcColor),
+              child: Center(
+                child: Text(
+                  '$remaining',
+                  style: GoogleFonts.nunito(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: _arcColor,
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -358,15 +395,12 @@ class _CountdownCircle extends StatelessWidget {
 class _ArcPainter extends CustomPainter {
   final double progress;
   final Color color;
-
   _ArcPainter({required this.progress, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 4;
-
-    // Background ring
     canvas.drawCircle(
       center,
       radius,
@@ -375,8 +409,6 @@ class _ArcPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 6,
     );
-
-    // Progress arc
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi / 2,
@@ -395,72 +427,245 @@ class _ArcPainter extends CustomPainter {
       old.progress != progress || old.color != color;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Single answer button
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AnswerButton extends StatelessWidget {
+class _AnswerButton extends StatefulWidget {
   final AnswerModel answer;
   final IconData shape;
   final bool isLocked;
+  final bool isSelected;
+  final double tiltX;
+  final double tiltY;
+  final int delayMs;
   final VoidCallback onTap;
-
   const _AnswerButton({
     required this.answer,
     required this.shape,
     required this.isLocked,
+    required this.isSelected,
+    required this.tiltX,
+    required this.tiltY,
+    required this.delayMs,
     required this.onTap,
   });
 
+  @override
+  State<_AnswerButton> createState() => _AnswerButtonState();
+}
+
+class _AnswerButtonState extends State<_AnswerButton>
+    with TickerProviderStateMixin {
+  late AnimationController _flipCtrl;
+  late AnimationController _entryCtrl;
+  late Animation<double> _entryCurve;
+  bool _didInvokeTap = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _flipCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    )..addListener(() {
+        if (!_didInvokeTap && _flipCtrl.value > 0.52) {
+          _didInvokeTap = true;
+          widget.onTap();
+        }
+      });
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    );
+    _entryCurve = CurvedAnimation(parent: _entryCtrl, curve: Curves.elasticOut);
+    Future<void>.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _entryCtrl.forward();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnswerButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isSelected && widget.isSelected) {
+      _flipCtrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _flipCtrl.dispose();
+    _entryCtrl.dispose();
+    super.dispose();
+  }
+
   Color get _bg {
-    final hex = answer.color.replaceAll('#', '');
+    final hex = widget.answer.color.replaceAll('#', '');
     return Color(int.parse('FF$hex', radix: 16));
   }
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: isLocked ? null : onTap,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: isLocked ? 0.55 : 1.0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: _bg,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: _bg.withOpacity(0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Icon(shape, color: AppColors.neutral50, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      answer.text,
-                      style: GoogleFonts.nunito(
-                        color: AppColors.neutral50,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_flipCtrl, _entryCtrl]),
+        builder: (_, __) {
+          final entry = _entryCurve.value;
+          final slideY = lerpDouble(40, 0, entry) ?? 0;
+          final flip = _flipCtrl.value * math.pi;
+          return Transform.translate(
+            offset: Offset(0, slideY),
+            child: Opacity(
+              opacity: entry.clamp(0.0, 1.0),
+              child: GestureDetector(
+                onTap: widget.isLocked
+                    ? null
+                    : () {
+                        if (!_flipCtrl.isAnimating && !widget.isSelected) {
+                          _didInvokeTap = false;
+                          _flipCtrl.forward(from: 0);
+                        }
+                      },
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  opacity: widget.isLocked && !widget.isSelected ? 0.55 : 1.0,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.0014)
+                      ..rotateX(widget.tiltX)
+                      ..rotateY(widget.tiltY)
+                      ..rotateY(flip),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _bg,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _bg.withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          children: [
+                            Icon(widget.shape, color: AppColors.neutral50, size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                widget.isSelected && _flipCtrl.value > 0.5
+                                    ? 'Locked'
+                                    : widget.answer.text,
+                                style: GoogleFonts.nunito(
+                                  color: AppColors.neutral50,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
+    );
+  }
+}
+
+class _FloatingParallaxBackground extends StatelessWidget {
+  final Animation<double> animation;
+  const _FloatingParallaxBackground({required this.animation});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (_, __) {
+        final t = Curves.easeInOut.transform(animation.value);
+        final drift = lerpDouble(-18, 18, t) ?? 0;
+        return Stack(
+          children: [
+            Positioned(
+              left: -40 + drift,
+              top: 90,
+              child: _blob(140, AppColors.primary400.withOpacity(0.12)),
+            ),
+            Positioned(
+              right: -30 - drift,
+              top: 240,
+              child: _blob(120, AppColors.accent400.withOpacity(0.12)),
+            ),
+            Positioned(
+              left: 80 - drift,
+              bottom: 110,
+              child: _blob(100, AppColors.success400.withOpacity(0.1)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _blob(double size, Color color) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      );
+}
+
+class _StaggerSlideIn extends StatefulWidget {
+  final Widget child;
+  final int delayMs;
+  const _StaggerSlideIn({required this.child, required this.delayMs});
+
+  @override
+  State<_StaggerSlideIn> createState() => _StaggerSlideInState();
+}
+
+class _StaggerSlideInState extends State<_StaggerSlideIn>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _curve;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 760),
+    );
+    _curve = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+    Future<void>.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _curve,
+      builder: (_, child) {
+        final v = _curve.value;
+        final slideY = lerpDouble(28, 0, v) ?? 0;
+        return Transform.translate(
+          offset: Offset(0, slideY),
+          child: Opacity(opacity: v.clamp(0, 1), child: child),
+        );
+      },
+      child: widget.child,
     );
   }
 }
