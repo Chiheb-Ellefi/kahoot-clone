@@ -23,6 +23,7 @@ class _JoinPageState extends State<JoinPage> {
   final _pinCtrl = TextEditingController();
   final _nicknameCtrl = TextEditingController();
   final _pageController = PageController();
+  int _currentStep = 0;
   String _selectedAvatar = 'https://api.dicebear.com/7.x/avataaars/png?seed=Felix';
 
   final List<String> _avatars = [
@@ -37,7 +38,21 @@ class _JoinPageState extends State<JoinPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _pageController.addListener(_handlePageChange);
+  }
+
+  void _handlePageChange() {
+    final page = _pageController.hasClients ? _pageController.page?.round() ?? 0 : 0;
+    if (page != _currentStep && mounted) {
+      setState(() => _currentStep = page);
+    }
+  }
+
+  @override
   void dispose() {
+    _pageController.removeListener(_handlePageChange);
     _pinCtrl.dispose();
     _nicknameCtrl.dispose();
     _pageController.dispose();
@@ -98,8 +113,10 @@ class _JoinPageState extends State<JoinPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isAvatarPage =
-        _pageController.hasClients && _pageController.page?.round() == 1;
+    final isAvatarPage = _currentStep == 1;
+    final authState = context.watch<AuthCubit>().state;
+    final isAuthenticated = authState is AuthAuthenticated;
+    final showBack = isAvatarPage || isAuthenticated;
     return PopScope(
       canPop: !isAvatarPage,
       onPopInvoked: (didPop) {
@@ -116,53 +133,35 @@ class _JoinPageState extends State<JoinPage> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-            automaticallyImplyLeading: false,
-  leading: BlocBuilder<AuthCubit, AuthState>(
-    builder: (context, authState) {
-      final isAuthenticated = authState is AuthAuthenticated;
-      final isOnAvatarPage = _pageController.hasClients &&
-          _pageController.page?.round() == 1;
- 
-      // Hide the back arrow for anonymous users on the PIN entry screen.
-      // Still show it on the avatar-selection page so they can go back to PIN.
-      if (!isAuthenticated && !isOnAvatarPage) return const SizedBox.shrink();
- 
-      return IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.neutral50),
-        onPressed: () {
-          if (isOnAvatarPage) {
-            _pageController.previousPage(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          } else {
-            context.pop();
-          }
-        },
-      );
-    },
-  ),
-
- 
-
+          automaticallyImplyLeading: false,
+          leading: showBack
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppColors.neutral50),
+                  onPressed: () {
+                    if (isAvatarPage) {
+                      _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    } else if (context.canPop()) {
+                      context.pop();
+                    }
+                  },
+                )
+              : null,
+          leadingWidth: showBack ? null : 0,
           actions: [
-            BlocBuilder<AuthCubit, AuthState>(
-              builder: (context, state) {
-                if (state is AuthAuthenticated) {
-                  return const SizedBox.shrink();
-                }
-                return TextButton(
-                  onPressed: () => context.push('/login'),
-                  child: Text(
-                    'Host / Login',
-                    style: GoogleFonts.nunito(
-                      color: AppColors.neutral50,
-                      fontWeight: FontWeight.bold,
-                    ),
+            if (!isAvatarPage && !isAuthenticated)
+              TextButton(
+                onPressed: () => context.push('/login'),
+                child: Text(
+                  'Host / Login',
+                  style: GoogleFonts.nunito(
+                    color: AppColors.neutral50,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-            ),
+                ),
+              ),
           ],
         ),
         body: PageView(

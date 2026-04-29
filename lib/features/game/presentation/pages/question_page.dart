@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../cubit/game_cubit.dart';
 import '../cubit/game_state.dart';
-import '../../data/models/game_session_model.dart';
 import '../../../quiz/data/models/question_model.dart';
 import '../../../quiz/data/models/answer_model.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -28,8 +27,13 @@ class _QuestionPageState extends State<QuestionPage>
   Timer? _timer;
   int _remaining = 30;
   bool _answered = false;
+  bool _timerStarted = false;
   QuestionModel? _currentQuestion;
   DateTime? _endTime;
+
+  // Guard: once we've pushed to answer-result, ignore any stale
+  // GameLeaderboardLoaded emitted by submitAnswer() for the last player.
+  bool _navigatedToResult = false;
 
   // Countdown animation controller
   late AnimationController _countdownCtrl;
@@ -51,9 +55,9 @@ class _QuestionPageState extends State<QuestionPage>
     _timer?.cancel();
     _remaining = seconds;
     _endTime = DateTime.now().add(Duration(seconds: seconds));
-    
-    _countdownCtrl?.duration = Duration(seconds: seconds);
-    _countdownCtrl?.forward(from: 0);
+
+    _countdownCtrl.duration = Duration(seconds: seconds);
+    _countdownCtrl.forward(from: 0);
 
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
@@ -61,9 +65,8 @@ class _QuestionPageState extends State<QuestionPage>
 
       final now = DateTime.now();
       final diff = _endTime!.difference(now).inSeconds;
-      
+
       if (diff != _remaining) {
-        // Subtle urgency cue in final countdown seconds.
         if (diff > 0 && diff <= 5) {
           AudioFeedbackService.instance.playTimerTick();
         }
@@ -79,6 +82,7 @@ class _QuestionPageState extends State<QuestionPage>
   void _selectAnswer(BuildContext context, QuestionModel q, AnswerModel a) {
     if (_answered) return;
     setState(() => _answered = true);
+    _timer?.cancel(); // Stop timer immediately on answer
     final timeTaken = q.timeLimit - _remaining;
     context.read<GameCubit>().submitAnswer(
           questionId: q.id,
@@ -87,25 +91,43 @@ class _QuestionPageState extends State<QuestionPage>
         );
   }
 
+  void _applyNewQuestion(QuestionModel q) {
+    setState(() {
+      _answered = false;
+      _navigatedToResult = false;
+      _timerStarted = true;
+      _currentQuestion = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _currentQuestion = q);
+      _startTimer(q.timeLimit);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<GameCubit, GameState>(
       listener: (context, state) {
         if (state is GameQuestionActive) {
-          setState(() {
-            _answered = false;
-            _currentQuestion = state.question;
-          });
-          _startTimer(state.question.timeLimit);
+          // New question arrived (e.g. host pressed Next Question)
+          _applyNewQuestion(state.question);
         } else if (state is GameAnswerResult) {
-          if (state.isCorrect) {
-            AudioFeedbackService.instance.playCorrectAnswer();
-          } else {
-            AudioFeedbackService.instance.playWrongAnswer();
-          }
+          // ALL players answered (or timer expired) — everyone goes to result page.
+          // This fires for BOTH players AND the host.
+          _timer?.cancel();
+          _navigatedToResult = true; // Block stale GameLeaderboardLoaded for last player
           context.push('/game/answer-result', extra: context.read<GameCubit>());
         } else if (state is GameLeaderboardLoaded) {
-          context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
+          // A player submitted their answer → navigate to leaderboard in waiting mode.
+          // The host never calls submitAnswer so this never fires for the host.
+          // Guard 1: only navigate if we actually answered.
+          // Guard 2: skip if we already navigated to answer-result (last player case).
+          if (!_answered || _navigatedToResult) return;
+          context.pushReplacement(
+            '/game/leaderboard',
+            extra: context.read<GameCubit>(),
+          );
         } else if (state is GameFinished) {
           context.pushReplacement('/game/leaderboard', extra: context.read<GameCubit>());
         } else if (state is GameError) {
@@ -121,11 +143,13 @@ class _QuestionPageState extends State<QuestionPage>
         final q = _currentQuestion ??
             (state is GameQuestionActive ? state.question : null);
 
-        // Start timer initially if we missed the transition
-        if (q != null && _timer == null && !_answered) {
+        // Fallback: start timer if the listener never handled it
+        // (e.g. the page was rebuilt from scratch with an existing state).
+        if (q != null && !_timerStarted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _timer == null) {
+            if (mounted && !_timerStarted) {
               setState(() {
+                _timerStarted = true;
                 _currentQuestion = q;
               });
               _startTimer(q.timeLimit);
@@ -148,127 +172,127 @@ class _QuestionPageState extends State<QuestionPage>
             child: ResponsiveContainer(
               maxWidth: 800,
               child: Column(
-              children: [
-                // ── Timer + question card ────────────────────────────
-                Expanded(
-                  flex: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Countdown circle
-                        _CountdownCircle(
-                          remaining: _remaining,
-                          total: q.timeLimit,
-                          animation: _countdownCtrl,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Optional question image
-                        if (q.imageUrl != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: CachedNetworkImage(
-                              imageUrl: q.imageUrl!,
-                              height: 120,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
+                children: [
+                  // ── Timer + question card ────────────────────────────
+                  Expanded(
+                    flex: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Countdown circle
+                          _CountdownCircle(
+                            remaining: _remaining,
+                            total: q.timeLimit,
+                            animation: _countdownCtrl,
                           ),
-                        if (q.imageUrl != null) const SizedBox(height: 12),
+                          const SizedBox(height: 16),
 
-                        // Question text
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: AppColors.neutral50,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.neutral800.withOpacity(0.2),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                          // Optional question image
+                          if (q.imageUrl != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: CachedNetworkImage(
+                                imageUrl: q.imageUrl!,
+                                height: 120,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                            child: Center(
-                              child: Text(
-                                q.text,
-                                style: GoogleFonts.nunito(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.primary800,
+                          if (q.imageUrl != null) const SizedBox(height: 12),
+
+                          // Question text
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: AppColors.neutral50,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.neutral800.withOpacity(0.2),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  q.text,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.primary800,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ── 2×2 answer grid ──────────────────────────────────
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: q.answers.length >= 4
-                        ? Column(
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    _AnswerButton(
-                                      answer: q.answers[0],
-                                      shape: Icons.change_history,
-                                      isLocked: _answered,
-                                      onTap: () =>
-                                          _selectAnswer(context, q, q.answers[0]),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _AnswerButton(
-                                      answer: q.answers[1],
-                                      shape: Icons.diamond_outlined,
-                                      isLocked: _answered,
-                                      onTap: () =>
-                                          _selectAnswer(context, q, q.answers[1]),
-                                    ),
-                                  ],
+                  // ── 2×2 answer grid ──────────────────────────────────
+                  Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      child: q.answers.length >= 4
+                          ? Column(
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      _AnswerButton(
+                                        answer: q.answers[0],
+                                        shape: Icons.change_history,
+                                        isLocked: _answered,
+                                        onTap: () =>
+                                            _selectAnswer(context, q, q.answers[0]),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _AnswerButton(
+                                        answer: q.answers[1],
+                                        shape: Icons.diamond_outlined,
+                                        isLocked: _answered,
+                                        onTap: () =>
+                                            _selectAnswer(context, q, q.answers[1]),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    _AnswerButton(
-                                      answer: q.answers[2],
-                                      shape: Icons.circle_outlined,
-                                      isLocked: _answered,
-                                      onTap: () =>
-                                          _selectAnswer(context, q, q.answers[2]),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _AnswerButton(
-                                      answer: q.answers[3],
-                                      shape: Icons.square_outlined,
-                                      isLocked: _answered,
-                                      onTap: () =>
-                                          _selectAnswer(context, q, q.answers[3]),
-                                    ),
-                                  ],
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      _AnswerButton(
+                                        answer: q.answers[2],
+                                        shape: Icons.circle_outlined,
+                                        isLocked: _answered,
+                                        onTap: () =>
+                                            _selectAnswer(context, q, q.answers[2]),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _AnswerButton(
+                                        answer: q.answers[3],
+                                        shape: Icons.square_outlined,
+                                        isLocked: _answered,
+                                        onTap: () =>
+                                            _selectAnswer(context, q, q.answers[3]),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
             ),
           ),
         );
@@ -293,7 +317,7 @@ class _CountdownCircle extends StatelessWidget {
   });
 
   Color get _arcColor {
-    final pct = remaining / total;
+    final pct = total > 0 ? remaining / total : 0.0;
     if (pct > 0.6) return AppColors.success400;
     if (pct > 0.3) return AppColors.accent400;
     return AppColors.error400;
@@ -307,7 +331,8 @@ class _CountdownCircle extends StatelessWidget {
       child: AnimatedBuilder(
         animation: animation,
         builder: (_, __) {
-          final progress = 1.0 - (remaining / total).clamp(0.0, 1.0);
+          final progress =
+              total > 0 ? 1.0 - (remaining / total).clamp(0.0, 1.0) : 1.0;
           return CustomPaint(
             painter: _ArcPainter(progress: progress, color: _arcColor),
             child: Center(

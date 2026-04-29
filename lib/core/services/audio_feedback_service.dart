@@ -4,6 +4,8 @@ import 'package:audioplayers/audioplayers.dart';
 class AudioFeedbackService {
   AudioFeedbackService._();
   static final AudioFeedbackService instance = AudioFeedbackService._();
+  AudioPlayer? _timerTickPlayer;
+  DateTime? _lastTimerTickAt;
 
   Future<void> _playAsset(
     String fileName, {
@@ -18,7 +20,24 @@ class AudioFeedbackService {
     });
   }
 
-  Future<void> playTimerTick() => _playAsset('timer_tick.mp3', volume: 0.45);
+  Future<void> playTimerTick() async {
+    // Reuse one player for reliable short SFX playback on web.
+    final now = DateTime.now();
+    if (_lastTimerTickAt != null &&
+        now.difference(_lastTimerTickAt!) < const Duration(milliseconds: 800)) {
+      return;
+    }
+    _lastTimerTickAt = now;
+    _timerTickPlayer ??= AudioPlayer();
+    try {
+      await _timerTickPlayer!.setReleaseMode(ReleaseMode.stop);
+      await _timerTickPlayer!.setVolume(0.45);
+      await _timerTickPlayer!.stop();
+      await _timerTickPlayer!.play(AssetSource('sounds/timer_tick.mp3'));
+    } catch (_) {
+      // Keep game flow resilient even if browser blocks playback.
+    }
+  }
 
   Future<void> playOvertake() => _playAsset('leaderboard.mp3', volume: 0.4);
 

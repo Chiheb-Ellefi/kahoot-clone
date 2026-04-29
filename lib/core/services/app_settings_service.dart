@@ -6,7 +6,7 @@ class AppSettingsService {
 
   final ValueNotifier<ThemeMode> themeMode =
       ValueNotifier<ThemeMode>(ThemeMode.system);
-  final ValueNotifier<Locale> locale = const ValueNotifier<Locale>(Locale('en'));
+final ValueNotifier<Locale> locale = ValueNotifier<Locale>(Locale('en'));
 
   void setThemeMode(ThemeMode mode) => themeMode.value = mode;
   void setLocale(Locale newLocale) => locale.value = newLocale;

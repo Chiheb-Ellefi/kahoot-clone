@@ -26,7 +26,7 @@ class AppConstants {
   static const int pollIntervalMs = 2000;
 
   // Answer-result auto-advance delay (ms)
-  static const int answerResultDelayMs = 2000;
+  static const int answerResultDelayMs = 5000;
   // How long the leaderboard is shown before host can advance (ms)
   static const int leaderboardPauseMs   = 4000;
 

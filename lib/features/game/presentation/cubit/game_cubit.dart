@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../data/repositories/game_repository.dart';
 import '../../data/models/leaderboard_model.dart';
@@ -25,8 +24,13 @@ class GameCubit extends Cubit<GameState> {
 
   /// Whether this client is the host.
   bool isHost = false;
+
+  /// Stored locally after submitAnswer so ALL_PLAYERS_ANSWERED can use it.
   bool? _lastAnswerCorrect;
   int _lastPointsEarned = 0;
+
+  bool _isSubmittingAnswer = false;
+  bool _pendingAllPlayersAnswered = false;
 
   GameCubit(this._repo) : super(const GameInitial());
 
@@ -107,7 +111,6 @@ class GameCubit extends Cubit<GameState> {
   // ─── Host: Start game ──────────────────────────────────────────────────
   Future<void> startGame() async {
     if (sessionId == null) return;
-    emit(const GameLoading());
     try {
       _sendWsMessage({'action': 'START_GAME'});
     } catch (e) {
@@ -130,6 +133,12 @@ class GameCubit extends Cubit<GameState> {
   }
 
   // ─── Player: Submit answer ─────────────────────────────────────────────
+  // Flow:
+  //   1. Fetch old-scores snapshot BEFORE submitting
+  //   2. Submit answer
+  //   3. Store isCorrect + pointsEarned locally
+  //   4. Emit GameLeaderboardLoaded(oldSnapshot) → question_page navigates
+  //      to leaderboard_page in "waiting" mode
   Future<void> submitAnswer({
     required String questionId,
     required String answerId,
@@ -137,6 +146,15 @@ class GameCubit extends Cubit<GameState> {
   }) async {
     if (sessionId == null || playerId == null) return;
     try {
+      _isSubmittingAnswer = true;
+      
+      // 1. Grab the snapshot BEFORE the answer is counted
+      LeaderboardModel? snapshot;
+      try {
+        snapshot = await _repo.getLeaderboard(sessionId!);
+      } catch (_) {}
+
+      // 2. Submit
       final result = await _repo.submitAnswer(
         sessionId: sessionId!,
         questionId: questionId,
@@ -144,16 +162,36 @@ class GameCubit extends Cubit<GameState> {
         playerId: playerId!,
         timeTaken: timeTaken,
       );
-      final isCorrect = (result['isCorrect'] as bool?) ?? (result['correct'] as bool?) ?? false;
-      final pointsEarned = (result['pointsEarned'] as num?)?.toInt() ?? 0;
-      _lastAnswerCorrect = isCorrect;
-      _lastPointsEarned = pointsEarned;
+
+      // 3. Store locally — used when ALL_PLAYERS_ANSWERED fires
+      _lastAnswerCorrect =
+          (result['isCorrect'] as bool?) ?? (result['correct'] as bool?) ?? false;
+      _lastPointsEarned = (result['pointsEarned'] as num?)?.toInt() ?? 0;
+
+      _isSubmittingAnswer = false;
+
+      // If the WS event arrived while we were submitting, process it now
+      // so we don't go to the leaderboard and skip the result screen.
+      if (_pendingAllPlayersAnswered) {
+        _pendingAllPlayersAnswered = false;
+        emit(GameAnswerResult(
+          isCorrect: _lastAnswerCorrect ?? false,
+          pointsEarned: _lastPointsEarned,
+        ));
+      } else {
+        // 4. Emit old-scores snapshot → triggers navigation to leaderboard (waiting)
+        if (snapshot != null) {
+          emit(GameLeaderboardLoaded(snapshot));
+        }
+      }
     } catch (e) {
+      _isSubmittingAnswer = false;
+      _pendingAllPlayersAnswered = false;
       emit(GameError(e.toString()));
     }
   }
 
-  // ─── Load leaderboard (between questions) ─────────────────────────────
+  // ─── Load leaderboard (updated scores, called by answer_result_page) ───
   Future<void> loadLeaderboard() async {
     if (sessionId == null) return;
     emit(const GameLoading());
@@ -165,29 +203,14 @@ class GameCubit extends Cubit<GameState> {
     }
   }
 
-  
-
-
-Future<void> _loadAndShowLeaderboard() async {
-    if (sessionId == null) return;
-    try {
-      final leaderboard = await _repo.getLeaderboard(sessionId!);
-      emit(GameShowLeaderboard(leaderboard));
-    } catch (e) {
-      // Fallback: still show whatever we can
-      emit(GameError(e.toString()));
-    }
-  }
-
   void requestShowLeaderboard() {
     if (isHost) _sendWsMessage({'action': 'SHOW_LEADERBOARD'});
   }
 
-
   // ─── Host: Advance to next question ───────────────────────────────────
+  // No GameLoading emitted — the WS QUESTION_ACTIVE event drives the transition.
   Future<void> goToNextQuestion() async {
     if (sessionId == null) return;
-    emit(const GameLoading());
     try {
       _sendWsMessage({'action': 'NEXT_QUESTION'});
     } catch (e) {
@@ -223,11 +246,11 @@ Future<void> _loadAndShowLeaderboard() async {
   void _connectWebSocket() {
     _disconnectWebSocket();
     if (sessionId == null) return;
-    
+
     final wsBase = ApiConstants.baseUrl.replaceFirst('http', 'ws');
     final url = '$wsBase/api/games/ws/$sessionId';
     final uriStr = playerId != null ? '$url?playerId=$playerId' : '$url?host=true';
-    
+
     try {
       _wsChannel = WebSocketChannel.connect(Uri.parse(uriStr));
       _wsChannel!.stream.listen(
@@ -268,9 +291,16 @@ Future<void> _loadAndShowLeaderboard() async {
       case 'PLAYER_JOINED':
         await refreshSession();
         break;
+
       case 'GAME_STARTED':
         await loadCurrentQuestion();
         break;
+
+      // ── New question started ──────────────────────────────────────────
+      // Reset per-round tracking. The question data in the payload is used
+      // directly so we avoid an extra HTTP round-trip.
+      // IMPORTANT: do NOT call loadLeaderboard here — the LEADERBOARD_UPDATED
+      // that follows is ignored during active questions (see below).
       case 'QUESTION_ACTIVE':
         _lastAnswerCorrect = null;
         _lastPointsEarned = 0;
@@ -283,33 +313,41 @@ Future<void> _loadAndShowLeaderboard() async {
           await loadCurrentQuestion();
         }
         break;
+
+      // ── All players answered — emit result for EVERYONE (host included) ─
+      // The host's _lastAnswerCorrect is null → treated as wrong (0 pts),
+      // which is fine since the host does not score.
       case 'ALL_PLAYERS_ANSWERED':
       case 'ROUND_COMPLETE':
-        emit(GameAnswerResult(
-          isCorrect: _lastAnswerCorrect ?? false,
-          pointsEarned: _lastPointsEarned,
-        ));
-        await Future<void>.delayed(
-          const Duration(milliseconds: AppConstants.answerResultDelayMs),
-        );
-        await _loadAndShowLeaderboard();
+        if (_isSubmittingAnswer) {
+          _pendingAllPlayersAnswered = true;
+        } else {
+          emit(GameAnswerResult(
+            isCorrect: _lastAnswerCorrect ?? false,
+            pointsEarned: _lastPointsEarned,
+          ));
+        }
         break;
+
+      // ── Leaderboard updated by server ─────────────────────────────────
+      // This fires right after QUESTION_ACTIVE in the observed log.
+      // We IGNORE it here — the answer_result_page calls loadLeaderboard()
+      // itself after its 5-second countdown. Reacting here would clobber
+      // the question_page with a leaderboard navigation.
+      case 'LEADERBOARD_UPDATED':
+        // Intentionally ignored — answer_result_page drives this transition.
+        break;
+
       case 'SHOW_LEADERBOARD':
         await loadLeaderboard();
         break;
-      case 'LEADERBOARD_UPDATED':
-        if (data['leaderboard'] != null) {
-          emit(GameLeaderboardLoaded(LeaderboardModel.fromJson(data['leaderboard'])));
-        } else {
-          await loadLeaderboard();
-        }
-        break;
+
       case 'GAME_FINISHED':
         _disconnectWebSocket();
         await loadResults();
         break;
+
       default:
-        // fallback
         await refreshSession();
     }
   }

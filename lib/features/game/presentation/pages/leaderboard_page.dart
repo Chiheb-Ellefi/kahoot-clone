@@ -118,7 +118,17 @@ class _LeaderboardPageState extends State<LeaderboardPage>
           _trackOvertakes(state.results);
         }
 
-        if (state is GameQuestionActive) {
+        // ALL_PLAYERS_ANSWERED fired while a player is already on leaderboard
+        // (waiting mode). This is the normal path for all players EXCEPT the
+        // last one whose submitAnswer races with the WS event.
+        // The host is excluded: isHost never lands here during a round.
+        if (state is GameAnswerResult) {
+          context.pushReplacement(
+            '/game/answer-result',
+            extra: context.read<GameCubit>(),
+          );
+        } else if (state is GameQuestionActive) {
+          // Host pressed Next Question → WS emitted QUESTION_ACTIVE
           context.pushReplacement('/game/question', extra: context.read<GameCubit>());
         } else if (state is GameError) {
           ScaffoldMessenger.of(context).showSnackBar(

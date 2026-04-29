@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'core/constants/app_constants.dart';
+import 'core/constants/app_colors.dart';
 import 'core/di/injection.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/services/app_settings_service.dart';
@@ -35,7 +36,7 @@ class QuizzoApp extends StatelessWidget {
   final _authCubit = sl<AuthCubit>();
 
   late final GoRouter _router = GoRouter(
-    initialLocation: '/join',
+    initialLocation: '/',
     refreshListenable: _GoRouterAuthNotifier(_authCubit),
     redirect: (context, state) {
       final authState = _authCubit.state;
@@ -44,6 +45,11 @@ class QuizzoApp extends StatelessWidget {
       if (authState is AuthInitial || authState is AuthLoading) return null;
 
       final isLoggedIn = authState is AuthAuthenticated;
+
+      // Handle the initial root route
+      if (state.matchedLocation == '/') {
+        return isLoggedIn ? '/home' : '/join';
+      }
       
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
@@ -61,6 +67,16 @@ class QuizzoApp extends StatelessWidget {
       return null;
     },
     routes: [
+      // ── Splash / Root ────────────────────────────────────────────────
+      GoRoute(
+        path: '/',
+        builder: (_, __) => Scaffold(
+          backgroundColor: AppColors.primary800,
+          body: const Center(
+            child: CircularProgressIndicator(color: AppColors.neutral50),
+          ),
+        ),
+      ),
       // ── Anonymous / Player ───────────────────────────────────────────
       GoRoute(
         path: '/join',
